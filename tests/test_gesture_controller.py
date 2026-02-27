@@ -100,3 +100,12 @@ def test_default_brush_plus_does_not_conflict_with_draw_pattern():
     draw_pattern = [0, 1, 0, 0, 0]
     detected = gc._detect_gesture(draw_pattern)
     assert detected is None or detected.name != "brush+"
+
+
+def test_handle_returns_triggered_gesture_name():
+    t = {"now": 100.0}
+    gc = GestureController(clock=lambda: t["now"])
+    painter = FakePainter()
+
+    name = gc.handle([1, 1, 0, 0, 0], painter)
+    assert name == "clear"

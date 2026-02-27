@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -107,21 +108,26 @@ class GestureController:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.apply_pattern_overrides(data)
 
-    def handle(self, fingers: Sequence[int], painter: "Painter") -> None:
+    def handle(self, fingers: Sequence[int], painter: "Painter") -> Optional[str]:
         gesture = self._detect_gesture(fingers)
         if not gesture:
-            return
+            return None
         
         now = self._clock()
         if now - self._last_global_trigger_time < self.global_cooldown:
-            return
+            return None
         last_for_gesture = self._last_trigger_by_name.get(gesture.name, 0.0)
         if now - last_for_gesture < gesture.cooldown:
-            return
+            return None
 
         gesture.handler(painter)
         self._last_global_trigger_time = now
         self._last_trigger_by_name[gesture.name] = now
+        logging.getLogger("airpaint.gesture").debug(
+            "gesture_triggered",
+            extra={"event": "gesture_triggered", "gesture": gesture.name},
+        )
+        return gesture.name
 
     def _detect_gesture(self, fingers: Sequence[int]) -> Optional[Gesture]:
         try:

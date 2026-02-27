@@ -62,6 +62,8 @@ python main.py
 python main.py --camera 0 --width 1280 --height 720 --cooldown 0.8 --snapshots-dir snapshots
 python main.py --no-mirror
 python main.py --gesture-map configs/gestures.example.json
+python main.py --log-level DEBUG
+python main.py --debug
 
 ## Roadmap (идеи)
 - Добавить unit-тесты для сопоставления жестов и undo в painter
@@ -105,3 +107,4 @@ python main.py --gesture-map configs/gestures.example.json
 
 - Жесты регистрируются в `GestureController.register(...)`
 - `Painter` поддерживает снимки состояния для undo в начале штриха
+- Логи в structured JSON формате; для тюнинга включи `--debug` и смотри `event=loop_stats`

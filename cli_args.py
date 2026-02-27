@@ -22,6 +22,8 @@ class AppConfig:
     cooldown: float
     snapshots_dir: str
     gesture_map: Optional[str]
+    log_level: str
+    debug: bool
 
 
 class AppCli:
@@ -78,6 +80,18 @@ class AppCli:
             default=None,
             help="Path to JSON with gesture pattern overrides, e.g. {'clear':[1,1,0,0,0]}",
         )
+        p.add_argument(
+            "--log-level",
+            type=str,
+            default="INFO",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            help="Logging level",
+        )
+        p.add_argument(
+            "--debug",
+            action="store_true",
+            help="Enable debug mode (equivalent to --log-level DEBUG)",
+        )
 
     def parse(self) -> AppConfig:
         args = self._parser.parse_args()
@@ -97,4 +111,6 @@ class AppCli:
             cooldown=args.cooldown,
             snapshots_dir=args.snapshots_dir,
             gesture_map=args.gesture_map,
+            log_level=args.log_level,
+            debug=args.debug,
         )

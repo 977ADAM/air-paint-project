@@ -4,12 +4,14 @@ import logging
 
 try:
     from cli_args import AppCli
+    from logging_utils import setup_logging
     from camera import Camera, CameraConfig
     from hand_tracker import HandTracker, HandTrackerConfig
     from gesture_controller import GestureController
     from painter import Painter, PainterConfig
 except ImportError:
     from .cli_args import AppCli
+    from .logging_utils import setup_logging
     from .camera import Camera, CameraConfig
     from .hand_tracker import HandTracker, HandTrackerConfig
     from .gesture_controller import GestureController
@@ -17,13 +19,29 @@ except ImportError:
 
 def main():
     args = AppCli().parse()
-    logging.basicConfig(level=logging.INFO)
+    setup_logging("DEBUG" if args.debug else args.log_level)
+    logger = logging.getLogger("airpaint.runtime")
+    logger.info(
+        "app_start",
+        extra={
+            "event": "app_start",
+            "target_fps": args.target_fps,
+            "detect_every": args.detect_every,
+            "tracker_scale": args.tracker_scale,
+            "log_level": "DEBUG" if args.debug else args.log_level,
+        },
+    )
 
     target_fps = max(1.0, float(args.target_fps))
     target_frame_time = 1.0 / target_fps
     detect_every = max(1, int(args.detect_every))
     prev_time = 0.0
     fps = 0.0
+    stats_window_start = time.monotonic()
+    stats_frames = 0
+    stats_detect_calls = 0
+    stats_detect_hits = 0
+    stats_gesture_hits = 0
 
     cam_cfg = CameraConfig(device_index=args.camera, width=args.width, height=args.height, mirror=(not args.no_mirror))
     painter_cfg = PainterConfig(snapshots_dir=args.snapshots_dir)
@@ -53,6 +71,7 @@ def main():
 
         while True:
             frame_start = time.monotonic()
+            stats_frames += 1
             try:
                 frame = camera.get_frame()
             except RuntimeError as e:
@@ -66,7 +85,10 @@ def main():
 
             frame_idx += 1
             if frame_idx % detect_every == 0:
+                stats_detect_calls += 1
                 cached_detection = tracker.detect(frame)
+                if cached_detection:
+                    stats_detect_hits += 1
             detection = cached_detection
 
             if detection:
@@ -74,7 +96,9 @@ def main():
                 fingers = tracker.fingers_up(landmarks, handedness)
 
                 painter.draw(frame, landmarks, fingers)
-                gestures.handle(fingers, painter)
+                triggered = gestures.handle(fingers, painter)
+                if triggered:
+                    stats_gesture_hits += 1
                 if args.draw_landmarks:
                     tracker.draw_landmarks(frame, landmarks)
 
@@ -120,6 +144,29 @@ def main():
                     instant_fps = 1.0 / dt
                     fps = fps * 0.9 + instant_fps * 0.1
             prev_time = current_time
+
+            if logger.isEnabledFor(logging.DEBUG):
+                now = time.monotonic()
+                window_s = now - stats_window_start
+                if window_s >= 1.0:
+                    logger.debug(
+                        "loop_stats",
+                        extra={
+                            "event": "loop_stats",
+                            "fps": round(fps, 2),
+                            "frames": stats_frames,
+                            "detect_every": detect_every,
+                            "detect_calls": stats_detect_calls,
+                            "detect_hits": stats_detect_hits,
+                            "gesture_hits": stats_gesture_hits,
+                            "window_s": round(window_s, 3),
+                        },
+                    )
+                    stats_window_start = now
+                    stats_frames = 0
+                    stats_detect_calls = 0
+                    stats_detect_hits = 0
+                    stats_gesture_hits = 0
 
     cv2.destroyAllWindows()
 
