@@ -40,6 +40,8 @@ class HandTracker:
                 self.hands = None
 
     def detect(self, frame) -> Optional[Tuple[object, object]]:
+        if self.hands is None:
+            return None
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.hands.process(rgb)
 
@@ -48,14 +50,14 @@ class HandTracker:
 
         return None
 
-    def draw_landmarks(self, frame, landmarks):
+    def draw_landmarks(self, frame, landmarks) -> None:
         self.mp_draw.draw_landmarks(
             frame,
             landmarks,
             self.mp_hands.HAND_CONNECTIONS
         )
 
-    def fingers_up(self, hand_landmarks, handedness):
+    def fingers_up(self, hand_landmarks, handedness) -> list[int]:
         fingers = []
         tip_ids = [4, 8, 12, 16, 20]
 
