@@ -84,8 +84,8 @@ python main.py --gesture-map configs/gestures.example.json
 - **color**:      [0, 1, 1, 0, 0]
 - **undo**:       [1, 1, 1, 0, 0]
 - **save**:       [0, 1, 1, 1, 0]
-- **brush+**:     [0, 1, 0, 0, 0]
-- **brush-**:     [0, 1, 0, 0, 1]
+- **brush+**:     [1, 0, 0, 0, 1]
+- **brush-**:     [1, 0, 0, 1, 1]
 
 ## Кастомная карта жестов через JSON
 

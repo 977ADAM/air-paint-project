@@ -93,3 +93,10 @@ def test_pattern_overrides_reject_collision():
     with pytest.raises(ValueError):
         # "undo" cannot share "clear" pattern
         gc.apply_pattern_overrides({"undo": [1, 1, 0, 0, 0]})
+
+
+def test_default_brush_plus_does_not_conflict_with_draw_pattern():
+    gc = GestureController()
+    draw_pattern = [0, 1, 0, 0, 0]
+    detected = gc._detect_gesture(draw_pattern)
+    assert detected is None or detected.name != "brush+"

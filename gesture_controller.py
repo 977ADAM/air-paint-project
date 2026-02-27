@@ -33,8 +33,8 @@ class GestureController:
         self.register("color",  [0, 1, 1, 0, 0], self._next_color, cooldown=0.5)
         self.register("undo",   [1, 1, 1, 0, 0], self._undo, cooldown=0.8)
         self.register("save",   [0, 1, 1, 1, 0], self._save, cooldown=1.0)
-        self.register("brush+", [0, 1, 0, 0, 0], self._brush_plus, cooldown=0.2)
-        self.register("brush-", [0, 1, 0, 0, 1], self._brush_minus, cooldown=0.2)
+        self.register("brush+", [1, 0, 0, 0, 1], self._brush_plus, cooldown=0.2)
+        self.register("brush-", [1, 0, 0, 1, 1], self._brush_minus, cooldown=0.2)
 
     def register(
         self,
