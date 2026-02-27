@@ -7,7 +7,7 @@ from typing import Optional, Final
 @dataclass(frozen=True)
 class CameraConfig:
     device_index: int = 0
-    width: int = 640
+    width: int = 1024
     height: int = 480
     warmup_frames: int = 5
     max_read_failures: int = 30
