@@ -17,16 +17,16 @@ class PainterConfig:
 
 
 class Painter:
-    def __init__(self, config: PainterConfig = PainterConfig()):
-        self.config = config
+    def __init__(self, config: Optional[PainterConfig] = None):
+        self.config = config or PainterConfig()
         self.canvas: Optional[np.ndarray] = None
         self._mask: Optional[np.ndarray] = None
         self._dirty: bool = True
-        self.color = config.default_color
-        self.brush_thickness = int(config.brush_thickness)
+        self.color = self.config.default_color
+        self.brush_thickness = int(self.config.brush_thickness)
         self.prev_x: Optional[int] = None
         self.prev_y: Optional[int] = None
-        self.smooth_factor = float(max(0.0, min(1.0, config.smooth_factor)))
+        self.smooth_factor = float(max(0.0, min(1.0, self.config.smooth_factor)))
         self._undo_stack: List[np.ndarray] = []
         self._last_saved_frame_idx = 0
         self._last_merged: Optional[np.ndarray] = None

@@ -15,15 +15,15 @@ class HandTrackerConfig:
 
 
 class HandTracker:
-    def __init__(self, config: HandTrackerConfig = HandTrackerConfig()):
-        self.config = config
+    def __init__(self, config: Optional[HandTrackerConfig] = None):
+        self.config = config or HandTrackerConfig()
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
-            max_num_hands=config.max_hands,
-            model_complexity=config.model_complexity,
-            min_detection_confidence=config.min_detection_confidence,
-            min_tracking_confidence=config.min_tracking_confidence,
+            max_num_hands=self.config.max_hands,
+            model_complexity=self.config.model_complexity,
+            min_detection_confidence=self.config.min_detection_confidence,
+            min_tracking_confidence=self.config.min_tracking_confidence,
         )
         self.mp_draw = mp.solutions.drawing_utils
 

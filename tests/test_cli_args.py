@@ -1,5 +1,7 @@
 import sys
 
+import pytest
+
 from cli_args import AppCli
 
 
@@ -36,3 +38,22 @@ def test_parse_overrides(monkeypatch):
     assert cfg.log_level == "ERROR"
     assert cfg.detect_every == 5
     assert cfg.tracker_scale == 0.4
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["airpaint", "--detect-every", "0"],
+        ["airpaint", "--target-fps", "0"],
+        ["airpaint", "--tracker-scale", "0.1"],
+        ["airpaint", "--tracker-scale", "1.2"],
+        ["airpaint", "--min-detection-confidence", "-0.1"],
+        ["airpaint", "--min-detection-confidence", "1.1"],
+        ["airpaint", "--min-tracking-confidence", "-0.1"],
+        ["airpaint", "--min-tracking-confidence", "1.1"],
+    ],
+)
+def test_parse_rejects_invalid_ranges(monkeypatch, argv):
+    monkeypatch.setattr(sys, "argv", argv)
+    with pytest.raises(SystemExit):
+        AppCli().parse()
