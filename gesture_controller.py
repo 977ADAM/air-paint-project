@@ -1,17 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Mapping
 
 @dataclass
 class Gesture:
     name: str
     pattern: Sequence[int]
     handler: Callable[["Painter"], None]
+    cooldown: float = 0.8  # seconds (monotonic)
 
 class GestureController:
     def __init__(self):
         self.last_gesture_time = 0.0
-        self.cooldown = 0.8  # seconds (monotonic)
+        self.default_cooldown = 0.8  # seconds (monotonic)
         self.colors: List[Tuple[int, int, int]] = [
             (255, 0, 255),
             (0, 255, 0),
@@ -19,26 +20,38 @@ class GestureController:
             (255, 255, 0)
         ]
         self.color_index = 0
-        self._gestures: Dict[str, Gesture] = {}
+        self._gestures_by_name: Dict[str, Gesture] = {}
+        self._gestures_by_pattern: Dict[Tuple[int, ...], Gesture] = {}
 
         # Default registry
-        self.register("clear", [1, 1, 0, 0, 0], self._clear)
-        self.register("color", [0, 1, 1, 0, 0], self._next_color)
-        self.register("undo",  [1, 1, 1, 0, 0], self._undo)
-        self.register("save",  [0, 1, 1, 1, 0], self._save)
-        self.register("brush+", [0, 1, 0, 0, 0], self._brush_plus)
-        self.register("brush-", [0, 1, 0, 0, 1], self._brush_minus)
+        self.register("clear",  [1, 1, 0, 0, 0], self._clear, cooldown=1.2)
+        self.register("color",  [0, 1, 1, 0, 0], self._next_color, cooldown=0.5)
+        self.register("undo",   [1, 1, 1, 0, 0], self._undo, cooldown=0.8)
+        self.register("save",   [0, 1, 1, 1, 0], self._save, cooldown=1.0)
+        self.register("brush+", [0, 1, 0, 0, 0], self._brush_plus, cooldown=0.2)
+        self.register("brush-", [0, 1, 0, 0, 1], self._brush_minus, cooldown=0.2)
 
-    def register(self, name: str, pattern: Sequence[int], handler: Callable[["Painter"], None]) -> None:
-        self._gestures[name] = Gesture(name=name, pattern=list(pattern), handler=handler)
+    def register(
+        self,
+        name: str,
+        pattern: Sequence[int],
+        handler: Callable[["Painter"], None],
+        cooldown: Optional[float] = None,
+    ) -> None:
+        p = tuple(int(x) for x in pattern)
+        if len(p) != 5:
+            raise ValueError("Gesture pattern must have 5 ints: [thumb,index,middle,ring,pinky]")
+        g = Gesture(name=name, pattern=p, handler=handler, cooldown=float(cooldown or self.default_cooldown))
+        self._gestures_by_name[name] = g
+        self._gestures_by_pattern[p] = g
 
-    def handle(self, fingers, painter):
+    def handle(self, fingers: Sequence[int], painter: "Painter") -> None:
         gesture = self._detect_gesture(fingers)
         if not gesture:
             return
 
         now = time.monotonic()
-        if now - self.last_gesture_time < self.cooldown:
+        if now - self.last_gesture_time < gesture.cooldown:
             return
 
         gesture.handler(painter)
@@ -46,10 +59,11 @@ class GestureController:
         self.last_gesture_time = now
 
     def _detect_gesture(self, fingers: Sequence[int]) -> Optional[Gesture]:
-        for gesture in self._gestures.values():
-            if list(fingers) == list(gesture.pattern):
-                return gesture
-        return None
+        try:
+            key = tuple(int(x) for x in fingers)
+        except Exception:
+            return None
+        return self._gestures_by_pattern.get(key)
 
     def _clear(self, painter):
         painter.clear()
