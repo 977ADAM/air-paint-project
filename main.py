@@ -35,6 +35,8 @@ def main():
     args = parse_args()
     logging.basicConfig(level=logging.INFO)
 
+    target_fps = 60.0
+    target_frame_time = 1.0 / target_fps
     prev_time = 0.0
     fps = 0.0
 
@@ -57,6 +59,7 @@ def main():
         help_text = "ESC: exit | Q: exit | U: undo | S: save snapshot | C: clear"
 
         while True:
+            frame_start = time.monotonic()
             try:
                 frame = camera.get_frame()
             except RuntimeError as e:
@@ -175,14 +178,6 @@ def main():
 
             
 
-            current_time = time.monotonic()
-            if prev_time > 0:
-                dt = current_time - prev_time
-                if dt > 0:
-                    instant_fps = 1.0 / dt
-                    fps = fps * 0.9 + instant_fps * 0.1
-            prev_time = current_time
-
             cv2.putText(frame, f"FPS: {int(fps)}",
                         (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX,
@@ -209,6 +204,19 @@ def main():
                 path = painter.save_snapshot(merged=True)
                 if path is not None:
                     logging.info("Saved snapshot: %s", path)
+
+            frame_elapsed = time.monotonic() - frame_start
+            sleep_for = target_frame_time - frame_elapsed
+            if sleep_for > 0:
+                time.sleep(sleep_for)
+
+            current_time = time.monotonic()
+            if prev_time > 0:
+                dt = current_time - prev_time
+                if dt > 0:
+                    instant_fps = 1.0 / dt
+                    fps = fps * 0.9 + instant_fps * 0.1
+            prev_time = current_time
 
     cv2.destroyAllWindows()
 
