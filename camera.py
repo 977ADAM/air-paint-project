@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import cv2
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Final
 
 @dataclass(frozen=True)
 class CameraConfig:
@@ -11,6 +11,7 @@ class CameraConfig:
     height: int = 480
     warmup_frames: int = 5
     max_read_failures: int = 30
+    mirror: bool = True
 
 
 class Camera:
@@ -18,6 +19,7 @@ class Camera:
         self.config = config
         self.cap: Optional[cv2.VideoCapture] = cv2.VideoCapture(config.device_index)
         self._read_failures = 0
+        self._flip_code: Final[int] = 1  # horizontal
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.height)
@@ -34,17 +36,22 @@ class Camera:
     def __exit__(self, exc_type, exc, tb):
         self.release()
 
-    def get_frame(self):
+    def get_frame(self) -> Optional["cv2.Mat"]:
         if not self.cap:
             return None
         ret, frame = self.cap.read()
         if not ret or frame is None:
             self._read_failures += 1
             if self._read_failures >= self.config.max_read_failures:
-                return None
+                raise RuntimeError(
+                    f"Camera read failed {self._read_failures} times подряд "
+                    f"(device_index={self.config.device_index})."
+                )
             return None
         self._read_failures = 0
-        return cv2.flip(frame, 1)
+        if self.config.mirror:
+            return cv2.flip(frame, self._flip_code)
+        return frame
 
     def release(self):
         if self.cap is not None:
