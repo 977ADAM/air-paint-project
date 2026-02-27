@@ -1,6 +1,7 @@
 import cv2
 import time
 import argparse
+import logging
 
 try:
     from camera import Camera, CameraConfig
@@ -26,6 +27,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    logging.basicConfig(level=logging.INFO)
 
     prev_time = 0.0
     fps = 0.0
@@ -45,7 +47,7 @@ def main():
             try:
                 frame = camera.get_frame()
             except RuntimeError as e:
-                print(f"[ERROR] {e}")
+                logging.error(str(e))
                 break
             if frame is None:
                 time.sleep(0.01)
@@ -99,7 +101,7 @@ def main():
             if key in (ord("s"), ord("S")):
                 path = painter.save_snapshot(merged=True)
                 if path is not None:
-                    print(f"[OK] Saved: {path}")
+                    logging.info("Saved snapshot: %s", path)
 
     cv2.destroyAllWindows()
 

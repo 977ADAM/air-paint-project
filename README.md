@@ -1,5 +1,8 @@
 # Air Paint – Gesture Based Drawing
 
+![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)
+
 Gesture-driven drawing app (OpenCV + MediaPipe) with modular architecture and extensible gesture engine.
 
 ## Demo

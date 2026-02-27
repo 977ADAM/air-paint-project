@@ -65,6 +65,8 @@ class Painter:
     def _push_undo(self) -> None:
         if self.canvas is None:
             return
+        if not np.any(self.canvas):
+            return
         self._undo_stack.append(self.canvas.copy())
         if len(self._undo_stack) > self.config.undo_depth:
             self._undo_stack.pop(0)
@@ -84,6 +86,9 @@ class Painter:
 
     def draw(self, frame, landmarks, fingers):
         h, w, _ = frame.shape
+
+        if not isinstance(fingers, (list, tuple)) or len(fingers) != 5:
+            return
 
         x = int(landmarks.landmark[8].x * w)
         y = int(landmarks.landmark[8].y * h)

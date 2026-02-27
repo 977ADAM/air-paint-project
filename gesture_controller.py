@@ -10,7 +10,8 @@ class Gesture:
     cooldown: float = 0.8  # seconds (monotonic)
 
 class GestureController:
-    def __init__(self):
+    def __init__(self, clock: Callable[[], float] = time.monotonic):
+        self._clock = clock
         self.last_gesture_time = 0.0
         self.default_cooldown = 0.8  # seconds (monotonic)
         self.global_cooldown = 0.0  # global min cooldown (monotonic)
@@ -42,6 +43,13 @@ class GestureController:
         p = tuple(int(x) for x in pattern)
         if len(p) != 5:
             raise ValueError("Gesture pattern must have 5 ints: [thumb,index,middle,ring,pinky]")
+
+        if name in self._gestures_by_name:
+            raise ValueError(f"Gesture '{name}' already registered")
+
+        if p in self._gestures_by_pattern:
+            raise ValueError(f"Gesture pattern {p} already registered")
+
         cd = float(self.default_cooldown if cooldown is None else cooldown)
         g = Gesture(name=name, pattern=p, handler=handler, cooldown=cd)
         self._gestures_by_name[name] = g
@@ -54,8 +62,8 @@ class GestureController:
         gesture = self._detect_gesture(fingers)
         if not gesture:
             return
-
-        now = time.monotonic()
+        
+        now = self._clock()
         cooldown = max(float(gesture.cooldown), float(self.global_cooldown))
         if now - self.last_gesture_time < cooldown:
             return
