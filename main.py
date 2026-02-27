@@ -1,54 +1,22 @@
 import cv2
 import time
-import argparse
 import logging
 
 try:
+    from cli_args import AppCli
     from camera import Camera, CameraConfig
     from hand_tracker import HandTracker, HandTrackerConfig
     from gesture_controller import GestureController
     from painter import Painter, PainterConfig
 except ImportError:
+    from .cli_args import AppCli
     from .camera import Camera, CameraConfig
     from .hand_tracker import HandTracker, HandTrackerConfig
     from .gesture_controller import GestureController
     from .painter import Painter, PainterConfig
 
-def parse_args():
-    p = argparse.ArgumentParser(description="Air Paint - Gesture Based Drawing")
-    p.add_argument("--camera", type=int, default=0, help="Camera device index")
-    p.add_argument("--width", type=int, default=640)
-    p.add_argument("--height", type=int, default=360)
-    p.add_argument("--no-mirror", action="store_true", help="Disable mirrored preview")
-    p.add_argument("--max-hands", type=int, default=1)
-    p.add_argument("--target-fps", type=float, default=60.0, help="Render FPS cap")
-    p.add_argument(
-        "--detect-every",
-        type=int,
-        default=2,
-        help="Run hand detection every N frames (higher = faster, less responsive)",
-    )
-    p.add_argument(
-        "--model-complexity",
-        type=int,
-        default=0,
-        choices=[0, 1],
-        help="MediaPipe model complexity (0 faster, 1 more accurate)",
-    )
-    p.add_argument("--min-detection-confidence", type=float, default=0.5)
-    p.add_argument("--min-tracking-confidence", type=float, default=0.5)
-    p.add_argument("--cooldown", type=float, default=0.0, help="Global min gesture cooldown seconds (in addition to per-gesture cooldown)")
-    p.add_argument("--snapshots-dir", type=str, default="snapshots")
-    p.add_argument(
-        "--gesture-map",
-        type=str,
-        default=None,
-        help="Path to JSON with gesture pattern overrides, e.g. {'clear':[1,1,0,0,0]}",
-    )
-    return p.parse_args()
-
 def main():
-    args = parse_args()
+    args = AppCli().parse()
     logging.basicConfig(level=logging.INFO)
 
     target_fps = max(1.0, float(args.target_fps))
@@ -110,100 +78,6 @@ def main():
 
             frame = painter.merge(frame)
             painter.draw_hud(frame)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
 
             cv2.putText(frame, f"FPS: {int(fps)}",
                         (10, 30),
