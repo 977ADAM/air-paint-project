@@ -1,6 +1,9 @@
-import cv2
-import time
 import logging
+import time
+from dataclasses import dataclass
+from typing import Optional, Protocol
+
+import cv2
 
 try:
     from cli_args import AppCli, AppConfig
@@ -17,9 +20,114 @@ except ImportError:
     from .gesture_controller import GestureController
     from .painter import Painter, PainterConfig
 
-class AppRunner:
-    def __init__(self, config: AppConfig):
+
+class CameraLike(Protocol):
+    def get_frame(self):
+        ...
+
+
+class TrackerLike(Protocol):
+    def detect(self, frame):
+        ...
+
+    def fingers_up(self, landmarks, handedness):
+        ...
+
+    def draw_landmarks(self, frame, landmarks) -> None:
+        ...
+
+
+class PainterLike(Protocol):
+    def init_canvas(self, frame) -> None:
+        ...
+
+    def draw(self, frame, landmarks, fingers) -> None:
+        ...
+
+    def merge(self, frame):
+        ...
+
+    def draw_hud(self, frame) -> None:
+        ...
+
+    def clear(self) -> None:
+        ...
+
+    def undo(self) -> None:
+        ...
+
+    def save_snapshot(self, merged: bool = True):
+        ...
+
+
+class GesturesLike(Protocol):
+    def handle(self, fingers, painter: PainterLike) -> Optional[str]:
+        ...
+
+
+class UiLike(Protocol):
+    def show(self, frame, fps: float, help_text: str, window_title: str) -> None:
+        ...
+
+    def wait_key(self, delay_ms: int) -> int:
+        ...
+
+    def close(self) -> None:
+        ...
+
+
+@dataclass
+class RuntimeDeps:
+    camera: CameraLike
+    tracker: TrackerLike
+    gestures: GesturesLike
+    painter: PainterLike
+
+
+class OpenCvUi:
+    def show(self, frame, fps: float, help_text: str, window_title: str) -> None:
+        cv2.putText(
+            frame,
+            f"FPS: {int(fps)}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
+        cv2.putText(
+            frame,
+            help_text,
+            (10, frame.shape[0] - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 255),
+            2,
+        )
+        cv2.imshow(window_title, frame)
+
+    def wait_key(self, delay_ms: int) -> int:
+        return cv2.waitKey(delay_ms)
+
+    def close(self) -> None:
+        cv2.destroyAllWindows()
+
+
+class RuntimeService:
+    def __init__(
+        self,
+        config: AppConfig,
+        deps: RuntimeDeps,
+        ui: Optional[UiLike] = None,
+        *,
+        clock=time.monotonic,
+        sleeper=time.sleep,
+    ):
         self.config = config
+        self.deps = deps
+        self.ui = ui or OpenCvUi()
+        self.clock = clock
+        self.sleeper = sleeper
         self.logger = logging.getLogger("airpaint.runtime")
 
         self.window_title = "Air Paint - Portfolio Version"
@@ -30,7 +138,7 @@ class AppRunner:
 
         self.prev_time = 0.0
         self.fps = 0.0
-        self.stats_window_start = time.monotonic()
+        self.stats_window_start = self.clock()
         self.stats_frames = 0
         self.stats_detect_calls = 0
         self.stats_detect_hits = 0
@@ -39,35 +147,135 @@ class AppRunner:
         self.cached_detection = None
 
     def run(self) -> None:
+        while True:
+            frame_start = self.clock()
+            self.stats_frames += 1
+
+            frame = self._get_frame(self.deps.camera)
+            if frame is None:
+                continue
+
+            self._process_frame(
+                frame,
+                tracker=self.deps.tracker,
+                gestures=self.deps.gestures,
+                painter=self.deps.painter,
+            )
+            self.ui.show(frame, self.fps, self.help_text, self.window_title)
+
+            key = self.ui.wait_key(1) & 0xFF
+            if self._handle_hotkeys(key, self.deps.painter):
+                break
+
+            self._finish_frame(frame_start)
+            self._debug_stats_tick()
+
+        self.ui.close()
+
+    def _get_frame(self, camera: CameraLike):
+        frame = camera.get_frame()
+        if frame is None:
+            self.sleeper(0.01)
+            return None
+        return frame
+
+    def _process_frame(self, frame, tracker: TrackerLike, gestures: GesturesLike, painter: PainterLike) -> None:
+        painter.init_canvas(frame)
+
+        self.frame_idx += 1
+        if self.frame_idx % self.detect_every == 0:
+            self.stats_detect_calls += 1
+            self.cached_detection = tracker.detect(frame)
+            if self.cached_detection:
+                self.stats_detect_hits += 1
+
+        if self.cached_detection:
+            landmarks, handedness = self.cached_detection
+            fingers = tracker.fingers_up(landmarks, handedness)
+            painter.draw(frame, landmarks, fingers)
+            triggered = gestures.handle(fingers, painter)
+            if triggered:
+                self.stats_gesture_hits += 1
+            if self.config.draw_landmarks:
+                tracker.draw_landmarks(frame, landmarks)
+
+        merged = painter.merge(frame)
+        painter.draw_hud(merged)
+        frame[:] = merged
+
+    def _handle_hotkeys(self, key: int, painter: PainterLike) -> bool:
+        if key in (27, ord("q"), ord("Q")):
+            return True
+        if key in (ord("c"), ord("C")):
+            painter.clear()
+        if key in (ord("u"), ord("U")):
+            painter.undo()
+        if key in (ord("s"), ord("S")):
+            path = painter.save_snapshot(merged=True)
+            if path is not None:
+                logging.info("Saved snapshot: %s", path)
+        return False
+
+    def _finish_frame(self, frame_start: float) -> None:
+        frame_elapsed = self.clock() - frame_start
+        sleep_for = self.target_frame_time - frame_elapsed
+        if sleep_for > 0:
+            self.sleeper(sleep_for)
+
+        current_time = self.clock()
+        if self.prev_time > 0:
+            dt = current_time - self.prev_time
+            if dt > 0:
+                instant_fps = 1.0 / dt
+                self.fps = self.fps * 0.9 + instant_fps * 0.1
+        self.prev_time = current_time
+
+    def _debug_stats_tick(self) -> None:
+        if not self.logger.isEnabledFor(logging.DEBUG):
+            return
+        now = self.clock()
+        window_s = now - self.stats_window_start
+        if window_s < 1.0:
+            return
+
+        self.logger.debug(
+            "loop_stats",
+            extra={
+                "event": "loop_stats",
+                "fps": round(self.fps, 2),
+                "frames": self.stats_frames,
+                "detect_every": self.detect_every,
+                "detect_calls": self.stats_detect_calls,
+                "detect_hits": self.stats_detect_hits,
+                "gesture_hits": self.stats_gesture_hits,
+                "window_s": round(window_s, 3),
+            },
+        )
+        self.stats_window_start = now
+        self.stats_frames = 0
+        self.stats_detect_calls = 0
+        self.stats_detect_hits = 0
+        self.stats_gesture_hits = 0
+
+
+class AppRunner:
+    def __init__(self, config: AppConfig):
+        self.config = config
+
+    def run(self) -> None:
         cam_cfg, painter_cfg, tracker_cfg = self._build_configs()
 
         with Camera(cam_cfg) as camera, HandTracker(tracker_cfg) as tracker:
             gestures = self._build_gestures()
             painter = Painter(painter_cfg)
-
-            while True:
-                frame_start = time.monotonic()
-                self.stats_frames += 1
-
-                try:
-                    frame = self._get_frame(camera)
-                except RuntimeError as e:
-                    logging.error(str(e))
-                    break
-                if frame is None:
-                    continue
-
-                self._process_frame(frame, tracker, gestures, painter)
-                self._render_ui(frame)
-
-                key = cv2.waitKey(1) & 0xFF
-                if self._handle_hotkeys(key, painter):
-                    break
-
-                self._finish_frame(frame_start)
-                self._debug_stats_tick()
-
-        cv2.destroyAllWindows()
+            deps = RuntimeDeps(
+                camera=camera,
+                tracker=tracker,
+                gestures=gestures,
+                painter=painter,
+            )
+            service = RuntimeService(config=self.config, deps=deps, ui=OpenCvUi())
+            service.run()
 
     def _build_configs(self) -> tuple[CameraConfig, PainterConfig, HandTrackerConfig]:
         cam_cfg = CameraConfig(
@@ -98,118 +306,6 @@ class AppRunner:
                     f"Failed to load --gesture-map '{self.config.gesture_map}': {e}"
                 ) from e
         return gestures
-
-    def _get_frame(self, camera: Camera):
-        frame = camera.get_frame()
-        if frame is None:
-            time.sleep(0.01)
-            return None
-        return frame
-
-    def _process_frame(
-        self,
-        frame,
-        tracker: HandTracker,
-        gestures: GestureController,
-        painter: Painter,
-    ) -> None:
-        painter.init_canvas(frame)
-
-        self.frame_idx += 1
-        if self.frame_idx % self.detect_every == 0:
-            self.stats_detect_calls += 1
-            self.cached_detection = tracker.detect(frame)
-            if self.cached_detection:
-                self.stats_detect_hits += 1
-
-        if self.cached_detection:
-            landmarks, handedness = self.cached_detection
-            fingers = tracker.fingers_up(landmarks, handedness)
-            painter.draw(frame, landmarks, fingers)
-            triggered = gestures.handle(fingers, painter)
-            if triggered:
-                self.stats_gesture_hits += 1
-            if self.config.draw_landmarks:
-                tracker.draw_landmarks(frame, landmarks)
-
-        merged = painter.merge(frame)
-        painter.draw_hud(merged)
-        frame[:] = merged
-
-    def _render_ui(self, frame) -> None:
-        cv2.putText(
-            frame,
-            f"FPS: {int(self.fps)}",
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 0),
-            2,
-        )
-        cv2.putText(
-            frame,
-            self.help_text,
-            (10, frame.shape[0] - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (255, 255, 255),
-            2,
-        )
-        cv2.imshow(self.window_title, frame)
-
-    def _handle_hotkeys(self, key: int, painter: Painter) -> bool:
-        if key in (27, ord("q"), ord("Q")):
-            return True
-        if key in (ord("c"), ord("C")):
-            painter.clear()
-        if key in (ord("u"), ord("U")):
-            painter.undo()
-        if key in (ord("s"), ord("S")):
-            path = painter.save_snapshot(merged=True)
-            if path is not None:
-                logging.info("Saved snapshot: %s", path)
-        return False
-
-    def _finish_frame(self, frame_start: float) -> None:
-        frame_elapsed = time.monotonic() - frame_start
-        sleep_for = self.target_frame_time - frame_elapsed
-        if sleep_for > 0:
-            time.sleep(sleep_for)
-
-        current_time = time.monotonic()
-        if self.prev_time > 0:
-            dt = current_time - self.prev_time
-            if dt > 0:
-                instant_fps = 1.0 / dt
-                self.fps = self.fps * 0.9 + instant_fps * 0.1
-        self.prev_time = current_time
-
-    def _debug_stats_tick(self) -> None:
-        if not self.logger.isEnabledFor(logging.DEBUG):
-            return
-        now = time.monotonic()
-        window_s = now - self.stats_window_start
-        if window_s < 1.0:
-            return
-
-        self.logger.debug(
-            "loop_stats",
-            extra={
-                "event": "loop_stats",
-                "fps": round(self.fps, 2),
-                "frames": self.stats_frames,
-                "detect_every": self.detect_every,
-                "detect_calls": self.stats_detect_calls,
-                "detect_hits": self.stats_detect_hits,
-                "gesture_hits": self.stats_gesture_hits,
-                "window_s": round(window_s, 3),
-            },
-        )
-        self.stats_window_start = now
-        self.stats_frames = 0
-        self.stats_detect_calls = 0
-        self.stats_detect_hits = 0
-        self.stats_gesture_hits = 0
 
 
 def main():

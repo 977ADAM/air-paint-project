@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from cli_args import AppConfig
-from main import AppRunner
+from main import AppRunner, RuntimeDeps, RuntimeService
 
 
 def _config(**overrides):
@@ -110,44 +110,53 @@ def test_build_gestures_raises_runtime_error_for_bad_map():
 
 
 def test_process_frame_runs_detection_on_schedule_and_tracks_stats():
-    runner = AppRunner(_config(detect_every=2, draw_landmarks=False))
     tracker = FakeTracker()
     gestures = FakeGestures(return_name="clear")
     painter = FakePainter()
+    service = RuntimeService(
+        _config(detect_every=2, draw_landmarks=False),
+        RuntimeDeps(camera=None, tracker=tracker, gestures=gestures, painter=painter),
+    )
     frame = np.zeros((20, 20, 3), dtype=np.uint8)
 
-    runner._process_frame(frame, tracker, gestures, painter)
+    service._process_frame(frame, tracker, gestures, painter)
     assert tracker.detect_calls == 0
-    assert runner.stats_detect_calls == 0
+    assert service.stats_detect_calls == 0
 
-    runner._process_frame(frame, tracker, gestures, painter)
+    service._process_frame(frame, tracker, gestures, painter)
     assert tracker.detect_calls == 1
-    assert runner.stats_detect_calls == 1
-    assert runner.stats_detect_hits == 1
-    assert runner.stats_gesture_hits == 1
+    assert service.stats_detect_calls == 1
+    assert service.stats_detect_hits == 1
+    assert service.stats_gesture_hits == 1
     assert painter.draw_calls == 1
     assert tracker.draw_landmarks_calls == 0
 
 
 def test_process_frame_draws_landmarks_when_enabled():
-    runner = AppRunner(_config(detect_every=1, draw_landmarks=True))
     tracker = FakeTracker()
     gestures = FakeGestures()
     painter = FakePainter()
+    service = RuntimeService(
+        _config(detect_every=1, draw_landmarks=True),
+        RuntimeDeps(camera=None, tracker=tracker, gestures=gestures, painter=painter),
+    )
     frame = np.zeros((20, 20, 3), dtype=np.uint8)
 
-    runner._process_frame(frame, tracker, gestures, painter)
+    service._process_frame(frame, tracker, gestures, painter)
     assert tracker.draw_landmarks_calls == 1
 
 
 def test_handle_hotkeys_dispatches_actions():
-    runner = AppRunner(_config())
+    service = RuntimeService(
+        _config(),
+        RuntimeDeps(camera=None, tracker=FakeTracker(), gestures=FakeGestures(), painter=FakePainter()),
+    )
     painter = FakePainter()
 
-    assert runner._handle_hotkeys(ord("c"), painter) is False
-    assert runner._handle_hotkeys(ord("u"), painter) is False
-    assert runner._handle_hotkeys(ord("s"), painter) is False
-    assert runner._handle_hotkeys(ord("q"), painter) is True
+    assert service._handle_hotkeys(ord("c"), painter) is False
+    assert service._handle_hotkeys(ord("u"), painter) is False
+    assert service._handle_hotkeys(ord("s"), painter) is False
+    assert service._handle_hotkeys(ord("q"), painter) is True
 
     assert painter.clear_calls == 1
     assert painter.undo_calls == 1
@@ -155,20 +164,23 @@ def test_handle_hotkeys_dispatches_actions():
 
 
 def test_debug_stats_tick_logs_and_resets(caplog):
-    runner = AppRunner(_config())
-    runner.logger.setLevel(logging.DEBUG)
-    runner.fps = 33.3
-    runner.stats_frames = 30
-    runner.stats_detect_calls = 10
-    runner.stats_detect_hits = 8
-    runner.stats_gesture_hits = 2
-    runner.stats_window_start = time.monotonic() - 1.2
+    service = RuntimeService(
+        _config(),
+        RuntimeDeps(camera=None, tracker=FakeTracker(), gestures=FakeGestures(), painter=FakePainter()),
+    )
+    service.logger.setLevel(logging.DEBUG)
+    service.fps = 33.3
+    service.stats_frames = 30
+    service.stats_detect_calls = 10
+    service.stats_detect_hits = 8
+    service.stats_gesture_hits = 2
+    service.stats_window_start = time.monotonic() - 1.2
 
     with caplog.at_level(logging.DEBUG, logger="airpaint.runtime"):
-        runner._debug_stats_tick()
+        service._debug_stats_tick()
 
     assert any(rec.msg == "loop_stats" for rec in caplog.records)
-    assert runner.stats_frames == 0
-    assert runner.stats_detect_calls == 0
-    assert runner.stats_detect_hits == 0
-    assert runner.stats_gesture_hits == 0
+    assert service.stats_frames == 0
+    assert service.stats_detect_calls == 0
+    assert service.stats_detect_hits == 0
+    assert service.stats_gesture_hits == 0
