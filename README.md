@@ -1,81 +1,84 @@
-# Air Paint – Gesture Based Drawing
+# Air Paint - Рисование жестами
 
 ![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)
 
-Gesture-driven drawing app (OpenCV + MediaPipe) with modular architecture and extensible gesture engine.
+Приложение для рисования в воздухе (OpenCV + MediaPipe) с модульной архитектурой и расширяемым движком жестов.
 
-## Demo
+## Демо
 
 ![demo](demo.gif)
 
-Computer vision drawing app using:
+Приложение компьютерного зрения использует:
 - OpenCV
 - MediaPipe
-- Real-time hand tracking
-- Custom gesture recognition engine
+- Отслеживание руки в реальном времени
+- Кастомный движок распознавания жестов
 
-## Architecture Principles
+## Принципы архитектуры
 
-- Modular design
-- Context manager for camera lifecycle
-- Gesture registry (Open/Closed principle)
-- Real-time smoothing algorithm
-- FPS exponential smoothing
+- Модульный дизайн
+- Контекстный менеджер для жизненного цикла камеры
+- Реестр жестов (принцип Open/Closed)
+- Алгоритм сглаживания в реальном времени
+- Экспоненциальное сглаживание FPS
 
-## Performance
+## Производительность
 
-- ~30-60 FPS depending on hardware
+- ~30-60 FPS в зависимости от железа
 
-## Features
-- Draw with index finger
-- Change colors via gesture
-- Clear canvas gesture
-- Undo (gesture + hotkey)
-- Save snapshot to PNG (gesture + hotkey)
-- Brush thickness change (gesture)
-- Smoothing algorithm
-- FPS monitoring
-- Gesture cooldown system
-- HUD overlay (FPS / brush / color)
-- Snapshots can save merged result (what you see on screen)
+## Возможности
+- Рисование указательным пальцем
+- Смена цвета жестом
+- Очистка холста жестом
+- Undo (жест + горячая клавиша)
+- Сохранение снимка в PNG (жест + горячая клавиша)
+- Изменение толщины кисти (жест)
+- Алгоритм сглаживания
+- Мониторинг FPS
+- Система cooldown для жестов
+- Независимый cooldown для каждого жеста (один жест не блокирует все остальные)
+- HUD-оверлей (FPS / кисть / цвет)
+- Сохранение объединенного кадра (как на экране)
+- Настраиваемая карта жестов из JSON (`--gesture-map`)
 
-## Architecture
+## Структура проекта
 camera.py
 hand_tracker.py
 gesture_controller.py
 painter.py
 main.py
 
-## Install
+## Установка
 
 pip install opencv-python mediapipe numpy
 
-## Run
+## Запуск
 
 python main.py
 
-## CLI options
+## Параметры CLI
 
 python main.py --camera 0 --width 1280 --height 720 --cooldown 0.8 --snapshots-dir snapshots
 python main.py --no-mirror
+python main.py --gesture-map configs/gestures.example.json
 
-## Roadmap (ideas)
-- Add unit tests for gesture matching + painter undo
-- Add configurable gesture map via JSON/YAML
-- Add "eraser" mode and simple palette UI
-- Package as `pip install airpaint` (pyproject.toml)
+## Roadmap (идеи)
+- Добавить unit-тесты для сопоставления жестов и undo в painter
+- Добавить настраиваемую карту жестов через JSON/YAML
+- Добавить режим "ластик" и простую палитру
+- Упаковать как `pip install airpaint` (pyproject.toml)
 
-## Controls
+## Управление
 
-- **ESC / Q** — exit
-- **C** — clear
-- **U** — undo
-- **S** — save snapshot (PNG)
+- **ESC / Q** - выход
+- **C** - очистить холст
+- **U** - undo
+- **S** - сохранить снимок (PNG)
 
-## Gesture map (default)
+## Карта жестов (по умолчанию)
 
-Fingers format: [thumb, index, middle, ring, pinky]
+Формат пальцев: [thumb, index, middle, ring, pinky]
 
 - **clear**:      [1, 1, 0, 0, 0]
 - **color**:      [0, 1, 1, 0, 0]
@@ -84,7 +87,21 @@ Fingers format: [thumb, index, middle, ring, pinky]
 - **brush+**:     [0, 1, 0, 0, 0]
 - **brush-**:     [0, 1, 0, 0, 1]
 
-## Dev notes
+## Кастомная карта жестов через JSON
 
-- Gestures are registered in `GestureController.register(...)`
-- Painter supports undo snapshots per stroke start
+Передай JSON-файл с переопределениями жестов:
+
+```json
+{
+  "clear": [1, 1, 0, 0, 0],
+  "undo": [1, 1, 1, 0, 0],
+  "save": [0, 1, 1, 1, 0]
+}
+```
+
+Допускаются только известные имена жестов, а пересечения паттернов валидируются до применения.
+
+## Заметки для разработки
+
+- Жесты регистрируются в `GestureController.register(...)`
+- `Painter` поддерживает снимки состояния для undo в начале штриха

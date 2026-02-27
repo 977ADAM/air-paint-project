@@ -62,10 +62,10 @@ class Painter:
         self.prev_y = None
         self._dirty = True
 
-    def _push_undo(self) -> None:
+    def _push_undo(self, *, allow_empty: bool = False) -> None:
         if self.canvas is None:
             return
-        if not np.any(self.canvas):
+        if not allow_empty and not np.any(self.canvas):
             return
         self._undo_stack.append(self.canvas.copy())
         if len(self._undo_stack) > self.config.undo_depth:
@@ -105,7 +105,7 @@ class Painter:
 
             if self.prev_x is None or self.prev_y is None:
                 self.prev_x, self.prev_y = x, y
-                self._push_undo()
+                self._push_undo(allow_empty=True)
 
             cv2.line(
                 self.canvas,
