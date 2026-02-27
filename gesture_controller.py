@@ -8,7 +8,7 @@ class Gesture:
     pattern: Sequence[int]
     handler: Callable[["Painter"], None]
     cooldown: float = 0.8  # seconds (monotonic)
-
+ 
 class GestureController:
     def __init__(self, clock: Callable[[], float] = time.monotonic):
         self._clock = clock
