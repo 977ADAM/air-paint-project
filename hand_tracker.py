@@ -8,9 +8,9 @@ from typing import Optional, Tuple
 @dataclass(frozen=True)
 class HandTrackerConfig:
     max_hands: int = 1
-    model_complexity: int = 1
-    min_detection_confidence: float = 0.7
-    min_tracking_confidence: float = 0.7
+    model_complexity: int = 0
+    min_detection_confidence: float = 0.5
+    min_tracking_confidence: float = 0.5
 
 
 class HandTracker:
