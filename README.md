@@ -1,5 +1,7 @@
 # Air Paint – Gesture Based Drawing
 
+Gesture-driven drawing app (OpenCV + MediaPipe) with modular architecture and extensible gesture engine.
+
 ## Demo
 
 ![demo](demo.gif)
@@ -32,6 +34,8 @@ Computer vision drawing app using:
 - Smoothing algorithm
 - FPS monitoring
 - Gesture cooldown system
+- HUD overlay (FPS / brush / color)
+- Snapshots can save merged result (what you see on screen)
 
 ## Architecture
 camera.py
@@ -51,6 +55,13 @@ python main.py
 ## CLI options
 
 python main.py --camera 0 --width 1280 --height 720 --cooldown 0.8 --snapshots-dir snapshots
+python main.py --no-mirror
+
+## Roadmap (ideas)
+- Add unit tests for gesture matching + painter undo
+- Add configurable gesture map via JSON/YAML
+- Add "eraser" mode and simple palette UI
+- Package as `pip install airpaint` (pyproject.toml)
 
 ## Controls
 
