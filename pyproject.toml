@@ -1,3 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airpaint"
+version = "0.1.0"
+description = "Air Paint - gesture based drawing with OpenCV and MediaPipe"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "mediapipe==0.10.21",
+  "opencv-python<4.13",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-cov",
+  "ruff",
+  "mypy",
+]
+
+[project.scripts]
+airpaint = "airpaint.main:main"
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

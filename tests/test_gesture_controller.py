@@ -1,6 +1,6 @@
 import pytest
 
-from gesture_controller import GestureController
+from airpaint.gesture_controller import GestureController
 
 
 class FakePainter:

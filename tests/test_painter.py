@@ -1,6 +1,6 @@
 import numpy as np
 
-from painter import Painter, PainterConfig
+from airpaint.painter import Painter, PainterConfig
 
 
 class LM:

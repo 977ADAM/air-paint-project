@@ -1,7 +1,7 @@
 import json
 import logging
 
-from logging_utils import JsonFormatter, setup_logging
+from airpaint.logging_utils import JsonFormatter, setup_logging
 
 
 def test_json_formatter_includes_standard_and_extra_fields():

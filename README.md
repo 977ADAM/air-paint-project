@@ -45,32 +45,29 @@
 - Валидация CLI-аргументов с понятными ошибками диапазонов
 
 ## Структура проекта
-camera.py
-hand_tracker.py
-gesture_controller.py
-painter.py
-cli_args.py
-logging_utils.py
-main.py
+airpaint/
+configs/
 tests/
 
 ## Установка
 
 pip install opencv-python mediapipe numpy
+pip install -e .
 pip install -r requirements-dev.txt  # для тестов и линтеров
 
 ## Запуск
 
-python main.py
+python -m airpaint
+airpaint
 
 ## Параметры CLI
 
-python main.py --camera 0 --width 1280 --height 720 --cooldown 0.8 --snapshots-dir snapshots
-python main.py --no-mirror
-python main.py --gesture-map configs/gestures.example.json
-python main.py --log-level DEBUG
-python main.py --debug
-python main.py --target-fps 60 --detect-every 3 --tracker-scale 0.6
+airpaint --camera 0 --width 1280 --height 720 --cooldown 0.8 --snapshots-dir snapshots
+airpaint --no-mirror
+airpaint --gesture-map configs/gestures.example.json
+airpaint --log-level DEBUG
+airpaint --debug
+airpaint --target-fps 60 --detect-every 3 --tracker-scale 0.6
 
 ## Roadmap (идеи)
 - Поддержка headless/recording-режимов (на базе `RuntimeService`)

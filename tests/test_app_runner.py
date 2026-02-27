@@ -4,8 +4,8 @@ import time
 import numpy as np
 import pytest
 
-from cli_args import AppConfig
-from main import AppRunner, RuntimeDeps, RuntimeService
+from airpaint.cli_args import AppConfig
+from airpaint.main import AppRunner, RuntimeDeps, RuntimeService
 
 
 def _config(**overrides):

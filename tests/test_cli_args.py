@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from cli_args import AppCli
+from airpaint.cli_args import AppCli
 
 
 def test_parse_defaults(monkeypatch):
