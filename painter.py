@@ -19,6 +19,8 @@ class Painter:
     def __init__(self, config: PainterConfig = PainterConfig()):
         self.config = config
         self.canvas: Optional[np.ndarray] = None
+        self._mask: Optional[np.ndarray] = None
+        self._dirty: bool = True
         self.color = config.default_color
         self.brush_thickness = int(config.brush_thickness)
         self.prev_x: Optional[int] = None
@@ -26,10 +28,13 @@ class Painter:
         self.smooth_factor = float(config.smooth_factor)
         self._undo_stack: List[np.ndarray] = []
         self._last_saved_frame_idx = 0
+        self._last_merged: Optional[np.ndarray] = None
 
     def init_canvas(self, frame):
         if self.canvas is None:
             self.canvas = np.zeros_like(frame)
+            self._mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+            self._dirty = True
 
     def set_color(self, color):
         self.color = color
@@ -41,12 +46,14 @@ class Painter:
         if self.canvas is not None:
             self._push_undo()
             self.canvas[:] = 0
+            self._dirty = True
 
  
     def undo(self) -> None:
         if not self._undo_stack or self.canvas is None:
             return
         self.canvas = self._undo_stack.pop()
+        self._dirty = True
 
     def _push_undo(self) -> None:
         if self.canvas is None:
@@ -55,7 +62,7 @@ class Painter:
         if len(self._undo_stack) > self.config.undo_depth:
             self._undo_stack.pop(0)
 
-    def save_snapshot(self) -> Optional[Path]:
+    def save_snapshot(self, *, merged: bool = True) -> Optional[Path]:
         if self.canvas is None:
             return None
         out_dir = Path(self.config.snapshots_dir)
@@ -63,8 +70,8 @@ class Painter:
 
         self._last_saved_frame_idx += 1
         path = out_dir / f"airpaint_{self._last_saved_frame_idx:04d}.png"
-        # Save only the canvas (transparent bg would require PNG alpha; here keep black bg)
-        cv2.imwrite(str(path), self.canvas)
+        img = self._last_merged if (merged and self._last_merged is not None) else self.canvas
+        cv2.imwrite(str(path), img)
         return path
 
     def draw(self, frame, landmarks, fingers):
@@ -91,6 +98,7 @@ class Painter:
                 self.color,
                 self.brush_thickness
             )
+            self._dirty = True
 
             self.prev_x, self.prev_y = x, y
         else:
@@ -99,11 +107,24 @@ class Painter:
     def merge(self, frame):
         if self.canvas is None:
             return frame
-        # Where canvas has something -> take it, else take frame.
-        gray = cv2.cvtColor(self.canvas, cv2.COLOR_BGR2GRAY)
-        _, mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
-        inv = cv2.bitwise_not(mask)
+        # Recompute mask only when canvas changed
+        if self._dirty:
+            gray = cv2.cvtColor(self.canvas, cv2.COLOR_BGR2GRAY)
+            _, self._mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+            self._dirty = False
 
+        inv = cv2.bitwise_not(self._mask)
         bg = cv2.bitwise_and(frame, frame, mask=inv)
-        fg = cv2.bitwise_and(self.canvas, self.canvas, mask=mask)
-        return cv2.add(bg, fg)
+        fg = cv2.bitwise_and(self.canvas, self.canvas, mask=self._mask)
+        merged = cv2.add(bg, fg)
+        self._last_merged = merged
+        return merged
+
+    def draw_hud(self, frame) -> None:
+        # Small UX: show brush + color
+        cv2.rectangle(frame, (10, 40), (220, 95), (0, 0, 0), -1)
+        cv2.putText(frame, f"Brush: {self.brush_thickness}",
+                    (20, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.putText(frame, "Color:",
+                    (20, 88), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.rectangle(frame, (95, 75), (210, 92), self.color, -1)
