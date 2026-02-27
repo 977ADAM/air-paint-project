@@ -23,6 +23,12 @@ def parse_args():
     p.add_argument("--max-hands", type=int, default=1)
     p.add_argument("--cooldown", type=float, default=0.0, help="Global min gesture cooldown seconds (in addition to per-gesture cooldown)")
     p.add_argument("--snapshots-dir", type=str, default="snapshots")
+    p.add_argument(
+        "--gesture-map",
+        type=str,
+        default=None,
+        help="Path to JSON with gesture pattern overrides, e.g. {'clear':[1,1,0,0,0]}",
+    )
     return p.parse_args()
 
 def main():
@@ -39,6 +45,13 @@ def main():
     with Camera(cam_cfg) as camera, HandTracker(tracker_cfg) as tracker:
         gestures = GestureController()
         gestures.set_global_cooldown(args.cooldown)
+        if args.gesture_map:
+            try:
+                gestures.load_pattern_overrides_from_file(args.gesture_map)
+                logging.info("Loaded gesture overrides from: %s", args.gesture_map)
+            except Exception as e:
+                logging.error("Failed to load --gesture-map '%s': %s", args.gesture_map, e)
+                return
         painter = Painter(painter_cfg)
 
         help_text = "ESC: exit | Q: exit | U: undo | S: save snapshot | C: clear"

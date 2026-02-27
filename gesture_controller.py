@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+import json
 import time
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 @dataclass
@@ -12,9 +14,10 @@ class Gesture:
 class GestureController:
     def __init__(self, clock: Callable[[], float] = time.monotonic):
         self._clock = clock
-        self.last_gesture_time = 0.0
         self.default_cooldown = 0.8  # seconds (monotonic)
         self.global_cooldown = 0.0  # global min cooldown (monotonic)
+        self._last_global_trigger_time = 0.0
+        self._last_trigger_by_name: Dict[str, float] = {}
         self.colors: List[Tuple[int, int, int]] = [
             (255, 0, 255),
             (0, 255, 0),
@@ -58,19 +61,67 @@ class GestureController:
     def set_global_cooldown(self, seconds: float) -> None:
         self.global_cooldown = max(0.0, float(seconds))
 
+    def apply_pattern_overrides(self, overrides: Dict[str, Sequence[int]]) -> None:
+        if not isinstance(overrides, dict):
+            raise ValueError("Gesture overrides must be a dict: {name: [thumb,index,middle,ring,pinky]}")
+
+        next_patterns: Dict[str, Tuple[int, ...]] = {}
+        for name, pattern in overrides.items():
+            if name not in self._gestures_by_name:
+                raise ValueError(f"Unknown gesture name in overrides: '{name}'")
+            p = tuple(int(x) for x in pattern)
+            if len(p) != 5:
+                raise ValueError(
+                    f"Gesture '{name}' must have 5 ints: [thumb,index,middle,ring,pinky]"
+                )
+            next_patterns[name] = p
+
+        combined_patterns: Dict[str, Tuple[int, ...]] = {
+            name: gesture.pattern for name, gesture in self._gestures_by_name.items()
+        }
+        combined_patterns.update(next_patterns)
+
+        reverse: Dict[Tuple[int, ...], str] = {}
+        for name, pattern in combined_patterns.items():
+            other = reverse.get(pattern)
+            if other is not None:
+                raise ValueError(
+                    f"Pattern collision: '{name}' and '{other}' share pattern {pattern}"
+                )
+            reverse[pattern] = name
+
+        for name, pattern in next_patterns.items():
+            gesture = self._gestures_by_name[name]
+            self._gestures_by_name[name] = Gesture(
+                name=gesture.name,
+                pattern=pattern,
+                handler=gesture.handler,
+                cooldown=gesture.cooldown,
+            )
+
+        self._gestures_by_pattern = {
+            gesture.pattern: gesture for gesture in self._gestures_by_name.values()
+        }
+
+    def load_pattern_overrides_from_file(self, path: str) -> None:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        self.apply_pattern_overrides(data)
+
     def handle(self, fingers: Sequence[int], painter: "Painter") -> None:
         gesture = self._detect_gesture(fingers)
         if not gesture:
             return
         
         now = self._clock()
-        cooldown = max(float(gesture.cooldown), float(self.global_cooldown))
-        if now - self.last_gesture_time < cooldown:
+        if now - self._last_global_trigger_time < self.global_cooldown:
+            return
+        last_for_gesture = self._last_trigger_by_name.get(gesture.name, 0.0)
+        if now - last_for_gesture < gesture.cooldown:
             return
 
         gesture.handler(painter)
-
-        self.last_gesture_time = now
+        self._last_global_trigger_time = now
+        self._last_trigger_by_name[gesture.name] = now
 
     def _detect_gesture(self, fingers: Sequence[int]) -> Optional[Gesture]:
         try:
