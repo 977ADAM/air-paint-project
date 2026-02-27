@@ -25,6 +25,19 @@ class FakePainter:
         self.calls.append(("brush", v))
 
 
+class _LM:
+    def __init__(self, x=0.0, y=0.0):
+        self.x = x
+        self.y = y
+
+
+class _Landmarks:
+    def __init__(self, thumb_x, thumb_y, index_x, index_y):
+        self.landmark = [_LM() for _ in range(21)]
+        self.landmark[4] = _LM(thumb_x, thumb_y)
+        self.landmark[8] = _LM(index_x, index_y)
+
+
 def test_register_validates_pattern_len():
     gc = GestureController()
     with pytest.raises(ValueError):
@@ -109,3 +122,45 @@ def test_handle_returns_triggered_gesture_name():
 
     name = gc.handle([1, 1, 0, 0, 0], painter)
     assert name == "clear"
+
+
+def test_temporal_pinch_hold_triggers_save():
+    t = {"now": 100.0}
+    gc = GestureController(clock=lambda: t["now"])
+    painter = FakePainter()
+    pinch = _Landmarks(0.5, 0.5, 0.52, 0.5)
+
+    assert gc.handle([0, 0, 0, 0, 0], painter, landmarks=pinch) is None
+    t["now"] = 100.31
+    assert gc.handle([0, 0, 0, 0, 0], painter, landmarks=pinch) == "pinch-hold"
+    assert "save" in painter.calls
+
+
+def test_temporal_double_tap_triggers_color():
+    t = {"now": 200.0}
+    gc = GestureController(clock=lambda: t["now"])
+    painter = FakePainter()
+    pinch = _Landmarks(0.5, 0.5, 0.52, 0.5)
+    open_hand = _Landmarks(0.2, 0.2, 0.8, 0.8)
+
+    gc.handle([0, 0, 0, 0, 0], painter, landmarks=pinch)
+    t["now"] = 200.05
+    gc.handle([0, 0, 0, 0, 0], painter, landmarks=open_hand)
+    t["now"] = 200.15
+    gc.handle([0, 0, 0, 0, 0], painter, landmarks=pinch)
+    t["now"] = 200.20
+    assert gc.handle([0, 0, 0, 0, 0], painter, landmarks=open_hand) == "double-tap"
+    assert any(call for call in painter.calls if isinstance(call, tuple) and call[0] == "color")
+
+
+def test_temporal_swipe_left_triggers_undo():
+    t = {"now": 300.0}
+    gc = GestureController(clock=lambda: t["now"])
+    painter = FakePainter()
+
+    l1 = _Landmarks(0.1, 0.1, 0.82, 0.5)
+    l2 = _Landmarks(0.1, 0.1, 0.56, 0.52)
+    assert gc.handle([0, 1, 0, 0, 0], painter, landmarks=l1) is None
+    t["now"] = 300.12
+    assert gc.handle([0, 1, 0, 0, 0], painter, landmarks=l2) == "swipe-left"
+    assert "undo" in painter.calls

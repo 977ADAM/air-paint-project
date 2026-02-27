@@ -53,7 +53,7 @@ class PainterLike(Protocol):
 
 
 class GesturesLike(Protocol):
-    def handle(self, fingers, painter: PainterLike) -> Optional[str]:
+    def handle(self, fingers, painter: PainterLike, landmarks=None) -> Optional[str]:
         ...
 
 
@@ -185,7 +185,7 @@ class RuntimeService:
             landmarks, handedness = self.cached_detection
             fingers = tracker.fingers_up(landmarks, handedness)
             painter.draw(frame, landmarks, fingers)
-            triggered = gestures.handle(fingers, painter)
+            triggered = gestures.handle(fingers, painter, landmarks=landmarks)
             if triggered:
                 self.stats_gesture_hits += 1
             if self.config.draw_landmarks:

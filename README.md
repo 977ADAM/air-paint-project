@@ -41,6 +41,7 @@
 - HUD-оверлей (FPS / кисть / цвет)
 - Сохранение объединенного кадра (как на экране)
 - Настраиваемая карта жестов из JSON (`--gesture-map`)
+- Temporal-gestures со state machine: `pinch-hold` (300ms), `swipe-left`, `double-tap`
 - Structured JSON logging + debug-метрики рантайма (`event=loop_stats`)
 - Валидация CLI-аргументов с понятными ошибками диапазонов
 
@@ -92,6 +93,12 @@ airpaint --target-fps 60 --detect-every 3 --tracker-scale 0.6
 - **save**:       [0, 1, 1, 1, 0]
 - **brush+**:     [1, 0, 0, 0, 1]
 - **brush-**:     [1, 0, 0, 1, 1]
+
+## Temporal gestures (по умолчанию)
+
+- **pinch-hold (300ms)**: удержание pinсh (большой+указательный) -> `save`
+- **swipe-left**: быстрый свайп указательным влево -> `undo`
+- **double-tap**: два быстрых pinch-тапа -> `color`
 
 ## Кастомная карта жестов через JSON
 

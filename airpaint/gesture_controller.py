@@ -1,9 +1,11 @@
 from dataclasses import dataclass
+from collections import deque
 import json
 import logging
+import math
 import time
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Deque, Dict, List, Optional, Sequence, Tuple
 
 @dataclass
 class Gesture:
@@ -28,6 +30,15 @@ class GestureController:
         self.color_index = 0
         self._gestures_by_name: Dict[str, Gesture] = {}
         self._gestures_by_pattern: Dict[Tuple[int, ...], Gesture] = {}
+        self._temporal_by_name: Dict[str, Gesture] = {}
+
+        # Temporal state machine
+        self._pinch_active = False
+        self._pinch_start_time = 0.0
+        self._pinch_hold_fired = False
+        self._last_tap_time = 0.0
+        self._tap_count = 0
+        self._index_history: Deque[Tuple[float, float, float]] = deque()
 
         # Default registry
         self.register("clear",  [1, 1, 0, 0, 0], self._clear, cooldown=1.2)
@@ -36,6 +47,9 @@ class GestureController:
         self.register("save",   [0, 1, 1, 1, 0], self._save, cooldown=1.0)
         self.register("brush+", [1, 0, 0, 0, 1], self._brush_plus, cooldown=0.2)
         self.register("brush-", [1, 0, 0, 1, 1], self._brush_minus, cooldown=0.2)
+        self.register_temporal("pinch-hold", self._save, cooldown=1.0)
+        self.register_temporal("swipe-left", self._undo, cooldown=0.7)
+        self.register_temporal("double-tap", self._next_color, cooldown=0.4)
 
     def register(
         self,
@@ -58,6 +72,17 @@ class GestureController:
         g = Gesture(name=name, pattern=p, handler=handler, cooldown=cd)
         self._gestures_by_name[name] = g
         self._gestures_by_pattern[p] = g
+
+    def register_temporal(
+        self,
+        name: str,
+        handler: Callable[["Painter"], None],
+        cooldown: Optional[float] = None,
+    ) -> None:
+        if name in self._gestures_by_name or name in self._temporal_by_name:
+            raise ValueError(f"Gesture '{name}' already registered")
+        cd = float(self.default_cooldown if cooldown is None else cooldown)
+        self._temporal_by_name[name] = Gesture(name=name, pattern=(), handler=handler, cooldown=cd)
 
     def set_global_cooldown(self, seconds: float) -> None:
         self.global_cooldown = max(0.0, float(seconds))
@@ -108,26 +133,115 @@ class GestureController:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.apply_pattern_overrides(data)
 
-    def handle(self, fingers: Sequence[int], painter: "Painter") -> Optional[str]:
+    def handle(self, fingers: Sequence[int], painter: "Painter", landmarks=None) -> Optional[str]:
+        temporal = self._detect_temporal_gesture(fingers, landmarks)
+        if temporal and self._can_trigger(temporal):
+            temporal.handler(painter)
+            self._after_trigger(temporal)
+            return temporal.name
+
         gesture = self._detect_gesture(fingers)
         if not gesture:
             return None
-        
-        now = self._clock()
-        if now - self._last_global_trigger_time < self.global_cooldown:
-            return None
-        last_for_gesture = self._last_trigger_by_name.get(gesture.name, 0.0)
-        if now - last_for_gesture < gesture.cooldown:
+        if not self._can_trigger(gesture):
             return None
 
         gesture.handler(painter)
+        self._after_trigger(gesture)
+        return gesture.name
+
+    def _can_trigger(self, gesture: Gesture) -> bool:
+        now = self._clock()
+        if now - self._last_global_trigger_time < self.global_cooldown:
+            return False
+        last_for_gesture = self._last_trigger_by_name.get(gesture.name, 0.0)
+        return (now - last_for_gesture) >= gesture.cooldown
+
+    def _after_trigger(self, gesture: Gesture) -> None:
+        now = self._clock()
         self._last_global_trigger_time = now
         self._last_trigger_by_name[gesture.name] = now
         logging.getLogger("airpaint.gesture").debug(
             "gesture_triggered",
             extra={"event": "gesture_triggered", "gesture": gesture.name},
         )
-        return gesture.name
+
+    def _detect_temporal_gesture(self, fingers: Sequence[int], landmarks) -> Optional[Gesture]:
+        if landmarks is None:
+            return None
+        now = self._clock()
+
+        pinch = self._update_pinch(now, landmarks)
+        if pinch:
+            return pinch
+        return self._update_swipe(now, fingers, landmarks)
+
+    def _update_pinch(self, now: float, landmarks) -> Optional[Gesture]:
+        pinch_distance_threshold = 0.045
+        hold_seconds = 0.3
+        tap_max_duration = 0.18
+        double_tap_gap = 0.3
+
+        thumb = landmarks.landmark[4]
+        index = landmarks.landmark[8]
+        distance = math.hypot(index.x - thumb.x, index.y - thumb.y)
+        is_pinched = distance <= pinch_distance_threshold
+
+        if is_pinched:
+            if not self._pinch_active:
+                self._pinch_active = True
+                self._pinch_start_time = now
+                self._pinch_hold_fired = False
+            elif not self._pinch_hold_fired and (now - self._pinch_start_time) >= hold_seconds:
+                self._pinch_hold_fired = True
+                return self._temporal_by_name.get("pinch-hold")
+            return None
+
+        if not self._pinch_active:
+            return None
+
+        pinch_duration = now - self._pinch_start_time
+        if (not self._pinch_hold_fired) and pinch_duration <= tap_max_duration:
+            if now - self._last_tap_time <= double_tap_gap:
+                self._tap_count += 1
+            else:
+                self._tap_count = 1
+            self._last_tap_time = now
+            if self._tap_count >= 2:
+                self._tap_count = 0
+                self._pinch_active = False
+                return self._temporal_by_name.get("double-tap")
+
+        self._pinch_active = False
+        self._pinch_hold_fired = False
+        return None
+
+    def _update_swipe(self, now: float, fingers: Sequence[int], landmarks) -> Optional[Gesture]:
+        swipe_window_s = 0.22
+        swipe_min_dx = 0.20
+        swipe_max_dy = 0.12
+
+        is_index_only = isinstance(fingers, (list, tuple)) and len(fingers) == 5 and fingers[1] == 1 and sum(fingers) == 1
+        if not is_index_only:
+            self._index_history.clear()
+            return None
+
+        index = landmarks.landmark[8]
+        self._index_history.append((now, float(index.x), float(index.y)))
+        while self._index_history and (now - self._index_history[0][0]) > swipe_window_s:
+            self._index_history.popleft()
+
+        if len(self._index_history) < 2:
+            return None
+
+        _, start_x, start_y = self._index_history[0]
+        _, end_x, end_y = self._index_history[-1]
+        dx = start_x - end_x
+        dy = abs(end_y - start_y)
+        if dx >= swipe_min_dx and dy <= swipe_max_dy:
+            self._index_history.clear()
+            return self._temporal_by_name.get("swipe-left")
+        return None
 
     def _detect_gesture(self, fingers: Sequence[int]) -> Optional[Gesture]:
         try:

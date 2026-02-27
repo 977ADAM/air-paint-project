@@ -53,7 +53,7 @@ class FakeGestures:
         self.return_name = return_name
         self.calls = 0
 
-    def handle(self, fingers, painter):
+    def handle(self, fingers, painter, landmarks=None):
         self.calls += 1
         return self.return_name
 
