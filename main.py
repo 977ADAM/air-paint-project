@@ -32,6 +32,7 @@ def main():
         model_complexity=args.model_complexity,
         min_detection_confidence=args.min_detection_confidence,
         min_tracking_confidence=args.min_tracking_confidence,
+        input_scale=args.tracker_scale,
     )
 
     with Camera(cam_cfg) as camera, HandTracker(tracker_cfg) as tracker:
@@ -74,7 +75,8 @@ def main():
 
                 painter.draw(frame, landmarks, fingers)
                 gestures.handle(fingers, painter)
-                tracker.draw_landmarks(frame, landmarks)
+                if args.draw_landmarks:
+                    tracker.draw_landmarks(frame, landmarks)
 
             frame = painter.merge(frame)
             painter.draw_hud(frame)

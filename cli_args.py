@@ -14,6 +14,8 @@ class AppConfig:
     max_hands: int
     target_fps: float
     detect_every: int
+    tracker_scale: float
+    draw_landmarks: bool
     model_complexity: int
     min_detection_confidence: float
     min_tracking_confidence: float
@@ -32,16 +34,27 @@ class AppCli:
     def _configure(self) -> None:
         p = self._parser
         p.add_argument("--camera", type=int, default=0, help="Camera device index")
-        p.add_argument("--width", type=int, default=640)
-        p.add_argument("--height", type=int, default=360)
+        p.add_argument("--width", type=int, default=480)
+        p.add_argument("--height", type=int, default=270)
         p.add_argument("--no-mirror", action="store_true", help="Disable mirrored preview")
         p.add_argument("--max-hands", type=int, default=1)
         p.add_argument("--target-fps", type=float, default=60.0, help="Render FPS cap")
         p.add_argument(
             "--detect-every",
             type=int,
-            default=2,
+            default=3,
             help="Run hand detection every N frames (higher = faster, less responsive)",
+        )
+        p.add_argument(
+            "--tracker-scale",
+            type=float,
+            default=0.6,
+            help="Scale frame before MediaPipe processing (0.2..1.0, lower is faster)",
+        )
+        p.add_argument(
+            "--draw-landmarks",
+            action="store_true",
+            help="Draw MediaPipe hand landmarks (costs FPS)",
         )
         p.add_argument(
             "--model-complexity",
@@ -76,6 +89,8 @@ class AppCli:
             max_hands=args.max_hands,
             target_fps=args.target_fps,
             detect_every=args.detect_every,
+            tracker_scale=args.tracker_scale,
+            draw_landmarks=args.draw_landmarks,
             model_complexity=args.model_complexity,
             min_detection_confidence=args.min_detection_confidence,
             min_tracking_confidence=args.min_tracking_confidence,

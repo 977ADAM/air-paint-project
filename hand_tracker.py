@@ -11,6 +11,7 @@ class HandTrackerConfig:
     model_complexity: int = 0
     min_detection_confidence: float = 0.5
     min_tracking_confidence: float = 0.5
+    input_scale: float = 1.0
 
 
 class HandTracker:
@@ -42,7 +43,11 @@ class HandTracker:
     def detect(self, frame) -> Optional[Tuple[object, object]]:
         if self.hands is None:
             return None
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        scale = min(1.0, max(0.2, float(self.config.input_scale)))
+        src = frame
+        if scale < 1.0:
+            src = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+        rgb = cv2.cvtColor(src, cv2.COLOR_BGR2RGB)
         result = self.hands.process(rgb)
 
         if result.multi_hand_landmarks and result.multi_handedness:
