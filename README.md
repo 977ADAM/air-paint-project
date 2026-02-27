@@ -1,7 +1,6 @@
 # Air Paint - Рисование жестами
 
-![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)
+> Бейджи CI/Coverage будут добавлены после публикации репозитория на GitHub.
 
 Приложение для рисования в воздухе (OpenCV + MediaPipe) с модульной архитектурой и расширяемым движком жестов.
 
@@ -20,6 +19,7 @@
 - Модульный дизайн
 - Контекстный менеджер для жизненного цикла камеры
 - Реестр жестов (принцип Open/Closed)
+- `RuntimeService` + протоколы зависимостей (`CameraLike`, `TrackerLike`, `PainterLike`) для тестируемости
 - Алгоритм сглаживания в реальном времени
 - Экспоненциальное сглаживание FPS
 
@@ -41,17 +41,23 @@
 - HUD-оверлей (FPS / кисть / цвет)
 - Сохранение объединенного кадра (как на экране)
 - Настраиваемая карта жестов из JSON (`--gesture-map`)
+- Structured JSON logging + debug-метрики рантайма (`event=loop_stats`)
+- Валидация CLI-аргументов с понятными ошибками диапазонов
 
 ## Структура проекта
 camera.py
 hand_tracker.py
 gesture_controller.py
 painter.py
+cli_args.py
+logging_utils.py
 main.py
+tests/
 
 ## Установка
 
 pip install opencv-python mediapipe numpy
+pip install -r requirements-dev.txt  # для тестов и линтеров
 
 ## Запуск
 
@@ -64,12 +70,13 @@ python main.py --no-mirror
 python main.py --gesture-map configs/gestures.example.json
 python main.py --log-level DEBUG
 python main.py --debug
+python main.py --target-fps 60 --detect-every 3 --tracker-scale 0.6
 
 ## Roadmap (идеи)
-- Добавить unit-тесты для сопоставления жестов и undo в painter
-- Добавить настраиваемую карту жестов через JSON/YAML
+- Поддержка headless/recording-режимов (на базе `RuntimeService`)
 - Добавить режим "ластик" и простую палитру
 - Упаковать как `pip install airpaint` (pyproject.toml)
+- Реальный CI + coverage badge после публикации репозитория
 
 ## Управление
 
