@@ -1,6 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import time
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Mapping
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 @dataclass
 class Gesture:
@@ -13,6 +13,7 @@ class GestureController:
     def __init__(self):
         self.last_gesture_time = 0.0
         self.default_cooldown = 0.8  # seconds (monotonic)
+        self.global_cooldown = 0.0  # global min cooldown (monotonic)
         self.colors: List[Tuple[int, int, int]] = [
             (255, 0, 255),
             (0, 255, 0),
@@ -41,9 +42,13 @@ class GestureController:
         p = tuple(int(x) for x in pattern)
         if len(p) != 5:
             raise ValueError("Gesture pattern must have 5 ints: [thumb,index,middle,ring,pinky]")
-        g = Gesture(name=name, pattern=p, handler=handler, cooldown=float(cooldown or self.default_cooldown))
+        cd = float(self.default_cooldown if cooldown is None else cooldown)
+        g = Gesture(name=name, pattern=p, handler=handler, cooldown=cd)
         self._gestures_by_name[name] = g
         self._gestures_by_pattern[p] = g
+
+    def set_global_cooldown(self, seconds: float) -> None:
+        self.global_cooldown = max(0.0, float(seconds))
 
     def handle(self, fingers: Sequence[int], painter: "Painter") -> None:
         gesture = self._detect_gesture(fingers)
@@ -51,7 +56,8 @@ class GestureController:
             return
 
         now = time.monotonic()
-        if now - self.last_gesture_time < gesture.cooldown:
+        cooldown = max(float(gesture.cooldown), float(self.global_cooldown))
+        if now - self.last_gesture_time < cooldown:
             return
 
         gesture.handler(painter)

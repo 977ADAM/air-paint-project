@@ -20,7 +20,7 @@ def parse_args():
     p.add_argument("--height", type=int, default=480)
     p.add_argument("--no-mirror", action="store_true", help="Disable mirrored preview")
     p.add_argument("--max-hands", type=int, default=1)
-    p.add_argument("--cooldown", type=float, default=0.8, help="Gesture cooldown seconds")
+    p.add_argument("--cooldown", type=float, default=0.0, help="Global min gesture cooldown seconds (in addition to per-gesture cooldown)")
     p.add_argument("--snapshots-dir", type=str, default="snapshots")
     return p.parse_args()
 
@@ -36,7 +36,7 @@ def main():
 
     with Camera(cam_cfg) as camera, HandTracker(tracker_cfg) as tracker:
         gestures = GestureController()
-        gestures.default_cooldown = float(args.cooldown)
+        gestures.set_global_cooldown(args.cooldown)
         painter = Painter(painter_cfg)
 
         help_text = "ESC: exit | Q: exit | U: undo | S: save snapshot | C: clear"
@@ -48,7 +48,8 @@ def main():
                 print(f"[ERROR] {e}")
                 break
             if frame is None:
-                break
+                time.sleep(0.01)
+                continue
 
             painter.init_canvas(frame)
 
@@ -96,7 +97,9 @@ def main():
             if key in (ord("u"), ord("U")):
                 painter.undo()
             if key in (ord("s"), ord("S")):
-                painter.save_snapshot(merged=True)
+                path = painter.save_snapshot(merged=True)
+                if path is not None:
+                    print(f"[OK] Saved: {path}")
 
     cv2.destroyAllWindows()
 

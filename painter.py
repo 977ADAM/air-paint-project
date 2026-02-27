@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import cv2
+import time
 import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,16 +26,18 @@ class Painter:
         self.brush_thickness = int(config.brush_thickness)
         self.prev_x: Optional[int] = None
         self.prev_y: Optional[int] = None
-        self.smooth_factor = float(config.smooth_factor)
+        self.smooth_factor = float(max(0.0, min(1.0, config.smooth_factor)))
         self._undo_stack: List[np.ndarray] = []
         self._last_saved_frame_idx = 0
         self._last_merged: Optional[np.ndarray] = None
 
     def init_canvas(self, frame):
-        if self.canvas is None:
+        if self.canvas is None or self.canvas.shape != frame.shape:
             self.canvas = np.zeros_like(frame)
             self._mask = np.zeros(frame.shape[:2], dtype=np.uint8)
             self._dirty = True
+            self.prev_x = None
+            self.prev_y = None
 
     def set_color(self, color):
         self.color = color
@@ -46,6 +49,8 @@ class Painter:
         if self.canvas is not None:
             self._push_undo()
             self.canvas[:] = 0
+            self.prev_x = None
+            self.prev_y = None
             self._dirty = True
 
  
@@ -53,6 +58,8 @@ class Painter:
         if not self._undo_stack or self.canvas is None:
             return
         self.canvas = self._undo_stack.pop()
+        self.prev_x = None
+        self.prev_y = None
         self._dirty = True
 
     def _push_undo(self) -> None:
@@ -69,7 +76,8 @@ class Painter:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         self._last_saved_frame_idx += 1
-        path = out_dir / f"airpaint_{self._last_saved_frame_idx:04d}.png"
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        path = out_dir / f"airpaint_{ts}_{self._last_saved_frame_idx:04d}.png"
         img = self._last_merged if (merged and self._last_merged is not None) else self.canvas
         cv2.imwrite(str(path), img)
         return path
@@ -79,6 +87,9 @@ class Painter:
 
         x = int(landmarks.landmark[8].x * w)
         y = int(landmarks.landmark[8].y * h)
+
+        x = max(0, min(w - 1, x))
+        y = max(0, min(h - 1, y))
 
         if self.prev_x is not None and self.prev_y is not None:
             x = int(self.prev_x * (1 - self.smooth_factor) + x * self.smooth_factor)
