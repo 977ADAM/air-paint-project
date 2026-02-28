@@ -42,6 +42,7 @@
 - Сохранение объединенного кадра (как на экране)
 - Настраиваемая карта жестов из JSON (`--gesture-map`)
 - Temporal-gestures со state machine: `pinch-hold` (300ms), `swipe-left`, `double-tap`
+- Live UI-подсказки рядом с рукой: распознанный жест и прогресс удержания (`pinch-hold 70%`)
 - Structured JSON logging + debug-метрики рантайма (`event=loop_stats`)
 - Валидация CLI-аргументов с понятными ошибками диапазонов
 

@@ -136,6 +136,24 @@ def test_temporal_pinch_hold_triggers_save():
     assert "save" in painter.calls
 
 
+def test_temporal_pinch_hold_reports_progress_feedback():
+    t = {"now": 120.0}
+    gc = GestureController(clock=lambda: t["now"])
+    painter = FakePainter()
+    pinch = _Landmarks(0.5, 0.5, 0.52, 0.5)
+
+    gc.handle([0, 0, 0, 0, 0], painter, landmarks=pinch)
+    t["now"] = 120.21
+    gc.handle([0, 0, 0, 0, 0], painter, landmarks=pinch)
+    feedback = gc.get_live_feedback()
+
+    assert feedback is not None
+    label, progress = feedback
+    assert label == "pinch-hold"
+    assert progress is not None
+    assert 0.65 <= progress <= 0.75
+
+
 def test_temporal_double_tap_triggers_color():
     t = {"now": 200.0}
     gc = GestureController(clock=lambda: t["now"])

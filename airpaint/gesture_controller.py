@@ -39,6 +39,7 @@ class GestureController:
         self._last_tap_time = 0.0
         self._tap_count = 0
         self._index_history: Deque[Tuple[float, float, float]] = deque()
+        self._live_feedback: Optional[Tuple[str, Optional[float]]] = None
 
         # Default registry
         self.register("clear",  [1, 1, 0, 0, 0], self._clear, cooldown=1.2)
@@ -134,21 +135,28 @@ class GestureController:
         self.apply_pattern_overrides(data)
 
     def handle(self, fingers: Sequence[int], painter: "Painter", landmarks=None) -> Optional[str]:
+        self._live_feedback = None
         temporal = self._detect_temporal_gesture(fingers, landmarks)
         if temporal and self._can_trigger(temporal):
             temporal.handler(painter)
             self._after_trigger(temporal)
+            self._live_feedback = (temporal.name, 1.0)
             return temporal.name
 
         gesture = self._detect_gesture(fingers)
         if not gesture:
             return None
+        self._live_feedback = (gesture.name, None)
         if not self._can_trigger(gesture):
             return None
 
         gesture.handler(painter)
         self._after_trigger(gesture)
+        self._live_feedback = (gesture.name, 1.0)
         return gesture.name
+
+    def get_live_feedback(self) -> Optional[Tuple[str, Optional[float]]]:
+        return self._live_feedback
 
     def _can_trigger(self, gesture: Gesture) -> bool:
         now = self._clock()
@@ -195,6 +203,9 @@ class GestureController:
             elif not self._pinch_hold_fired and (now - self._pinch_start_time) >= hold_seconds:
                 self._pinch_hold_fired = True
                 return self._temporal_by_name.get("pinch-hold")
+            if not self._pinch_hold_fired:
+                progress = min(1.0, max(0.0, (now - self._pinch_start_time) / hold_seconds))
+                self._live_feedback = ("pinch-hold", progress)
             return None
 
         if not self._pinch_active:
@@ -238,6 +249,8 @@ class GestureController:
         _, end_x, end_y = self._index_history[-1]
         dx = start_x - end_x
         dy = abs(end_y - start_y)
+        if dx > 0 and dy <= swipe_max_dy:
+            self._live_feedback = ("swipe-left", min(1.0, dx / swipe_min_dx))
         if dx >= swipe_min_dx and dy <= swipe_max_dy:
             self._index_history.clear()
             return self._temporal_by_name.get("swipe-left")

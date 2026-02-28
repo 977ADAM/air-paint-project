@@ -55,6 +55,8 @@ class PainterLike(Protocol):
 class GesturesLike(Protocol):
     def handle(self, fingers, painter: PainterLike, landmarks=None) -> Optional[str]:
         ...
+    def get_live_feedback(self) -> Optional[tuple[str, Optional[float]]]:
+        ...
 
 
 class UiLike(Protocol):
@@ -188,12 +190,42 @@ class RuntimeService:
             triggered = gestures.handle(fingers, painter, landmarks=landmarks)
             if triggered:
                 self.stats_gesture_hits += 1
+            self._draw_gesture_hint(frame, landmarks, gestures.get_live_feedback())
             if self.config.draw_landmarks:
                 tracker.draw_landmarks(frame, landmarks)
 
         merged = painter.merge(frame)
         painter.draw_hud(merged)
         frame[:] = merged
+
+    def _draw_gesture_hint(self, frame, landmarks, feedback: Optional[tuple[str, Optional[float]]]) -> None:
+        if not feedback:
+            return
+        h, w = frame.shape[:2]
+        x = int(landmarks.landmark[8].x * w)
+        y = int(landmarks.landmark[8].y * h)
+        x = max(0, min(w - 1, x))
+        y = max(0, min(h - 1, y))
+
+        label, progress = feedback
+        if progress is None:
+            text = label
+        else:
+            text = f"{label} {int(progress * 100)}%"
+
+        pos_x = min(max(10, x + 12), max(10, w - 220))
+        pos_y = min(max(30, y - 12), max(30, h - 10))
+
+        cv2.rectangle(frame, (pos_x - 4, pos_y - 20), (min(w - 1, pos_x + 210), pos_y + 6), (0, 0, 0), -1)
+        cv2.putText(
+            frame,
+            text,
+            (pos_x, pos_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (0, 255, 255) if progress is not None and progress < 1.0 else (0, 255, 0),
+            2,
+        )
 
     def _handle_hotkeys(self, key: int, painter: PainterLike) -> bool:
         if key in (27, ord("q"), ord("Q")):

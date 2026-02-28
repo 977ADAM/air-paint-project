@@ -57,6 +57,9 @@ class FakeGestures:
         self.calls += 1
         return self.return_name
 
+    def get_live_feedback(self):
+        return None
+
 
 class FakePainter:
     def __init__(self):
