@@ -58,7 +58,7 @@ pip install -r requirements-dev.txt  # для тестов и линтеров
 
 ## Запуск
 
-python -m airpaint
+python -m airpaint 
 airpaint
 
 ## Параметры CLI
