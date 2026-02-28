@@ -20,9 +20,14 @@ dev = [
   "ruff",
   "mypy",
 ]
+web = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn>=0.30,<1.0",
+]
 
 [project.scripts]
 airpaint = "airpaint.main:main"
+airpaint-web = "airpaint.web_server:main"
 
 [tool.ruff]
 line-length = 100

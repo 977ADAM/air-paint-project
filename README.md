@@ -4,6 +4,10 @@
 
 Приложение для рисования в воздухе (OpenCV + MediaPipe) с модульной архитектурой и расширяемым движком жестов.
 
+Поддерживаются два режима:
+- Desktop: классический OpenCV-UI (`airpaint`)
+- Web: Python backend + браузерный frontend (`airpaint-web` + React Canvas)
+
 ## Демо
 
 ![demo](demo.gif)
@@ -46,22 +50,45 @@
 - Shape assist: кривые контуры автоматически выравниваются в `circle` / `rectangle` / `arrow`
 - Structured JSON logging + debug-метрики рантайма (`event=loop_stats`)
 - Валидация CLI-аргументов с понятными ошибками диапазонов
+- Web runtime: кадры из браузера -> backend распознает landmarks/жесты -> браузер рисует Canvas + HUD
 
 ## Структура проекта
 airpaint/
 configs/
 tests/
+web/
 
 ## Установка
 
 pip install opencv-python mediapipe numpy
 pip install -e .
 pip install -r requirements-dev.txt  # для тестов и линтеров
+pip install -r requirements-web.txt  # для web-backend
 
 ## Запуск
 
 python -m airpaint 
 airpaint
+
+## Web версия (React + Canvas + WebSocket)
+
+1) Запусти backend:
+
+airpaint-web --host 0.0.0.0 --port 8000
+
+2) Запусти frontend:
+
+cd web
+npm install
+npm run dev
+
+3) Открой `http://localhost:5173`.
+
+Поток данных:
+- Браузер берет кадры с вебкамеры (`getUserMedia`)
+- Кадры отправляются в Python backend по WebSocket (`/ws/frames`)
+- Backend возвращает landmarks/жесты + состояние холста
+- React Canvas рисует линии и HUD в браузере
 
 ## Параметры CLI
 

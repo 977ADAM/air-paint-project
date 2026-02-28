@@ -1,0 +1,241 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap");
+
+:root {
+  --bg-0: #061225;
+  --bg-1: #0f2135;
+  --bg-2: #16374c;
+  --ink: #f8f4e8;
+  --muted: #9eb5c9;
+  --accent: #ff8f3f;
+  --accent-2: #29e8ac;
+  --danger: #ff6177;
+  --card: rgba(5, 16, 33, 0.72);
+  --card-border: rgba(158, 181, 201, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 143, 63, 0.24), transparent 36%),
+    radial-gradient(circle at 84% 76%, rgba(41, 232, 172, 0.18), transparent 42%),
+    linear-gradient(140deg, var(--bg-0), var(--bg-1) 46%, var(--bg-2));
+}
+
+.app-shell {
+  width: min(1280px, 100% - 2rem);
+  margin: 1rem auto 2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.app-header {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(12px);
+}
+
+.eyebrow {
+  margin: 0;
+  font: 700 0.75rem "Space Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-2);
+}
+
+.app-header h1 {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1rem, 2.4vw, 1.6rem);
+}
+
+.ws-form {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(430px, 100%);
+}
+
+.ws-form label {
+  font: 700 0.72rem "Space Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+}
+
+.ws-form div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+input,
+button {
+  font: 500 0.92rem "Space Grotesk", sans-serif;
+  border-radius: 10px;
+  border: 1px solid rgba(158, 181, 201, 0.33);
+  color: var(--ink);
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  background: rgba(8, 19, 37, 0.85);
+}
+
+button {
+  cursor: pointer;
+  padding: 0.55rem 0.85rem;
+  background: linear-gradient(135deg, var(--accent), #ff5f55);
+  border: none;
+  font-weight: 700;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  opacity: 0.7;
+}
+
+.layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2.1fr 1fr;
+}
+
+.stage-card,
+.control-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  backdrop-filter: blur(10px);
+}
+
+.stage-card {
+  padding: 0.85rem;
+}
+
+.stage-canvas {
+  width: 100%;
+  max-height: min(76vh, 760px);
+  border-radius: 12px;
+  background: #0d1b2f;
+  border: 1px solid rgba(158, 181, 201, 0.25);
+}
+
+.hidden-media {
+  display: none;
+}
+
+.control-card {
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+.status-grid,
+.hud-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.status-grid p,
+.hud-grid p {
+  margin: 0;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(158, 181, 201, 0.2);
+  background: rgba(6, 17, 33, 0.7);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.status-grid strong,
+.hud-grid strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  padding: 0.2rem 0.48rem;
+  width: fit-content;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font: 700 0.66rem "Space Mono", monospace;
+}
+
+.status-connecting {
+  background: rgba(255, 196, 68, 0.18);
+  color: #ffcf68;
+}
+
+.status-connected {
+  background: rgba(41, 232, 172, 0.18);
+  color: var(--accent-2);
+}
+
+.status-disconnected {
+  background: rgba(255, 97, 119, 0.2);
+  color: var(--danger);
+}
+
+.button-grid {
+  display: grid;
+  gap: 0.52rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.button-grid button {
+  width: 100%;
+}
+
+.error-line {
+  min-height: 1.4rem;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    width: min(100% - 1rem, 1280px);
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ws-form {
+    min-width: 0;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-canvas {
+    max-height: 54vh;
+  }
+}
