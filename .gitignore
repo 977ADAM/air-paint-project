@@ -3,3 +3,4 @@ __pycache__/
 snapshots/
 *.png
 .pytest_cache/
+node_modules/

@@ -74,7 +74,7 @@ airpaint
 
 1) Запусти backend:
 
-airpaint-web --host 0.0.0.0 --port 8000
+python -m airpaint.web_server --host 127.0.0.1 --port 8080
 
 2) Запусти frontend:
 

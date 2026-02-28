@@ -6,11 +6,11 @@ const CAPTURE_HEIGHT = 270;
 
 function getDefaultWsUrl() {
   if (typeof window === "undefined") {
-    return "ws://127.0.0.1:8000/ws/frames";
+    return "ws://127.0.0.1:8080/ws/frames";
   }
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   const host = window.location.hostname || "127.0.0.1";
-  return `${proto}://${host}:8000/ws/frames`;
+  return `${proto}://${host}:8080/ws/frames`;
 }
 
 function colorToCss(color) {
