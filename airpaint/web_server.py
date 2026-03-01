@@ -1,23 +1,15 @@
 from __future__ import annotations
 
 import argparse
+from typing import TYPE_CHECKING
 import json
 
 from .logging_utils import setup_logging
 from .web_runtime import WebRuntimeConfig, WebSessionRuntime
 
-try:
+if TYPE_CHECKING:
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-except ImportError:  # pragma: no cover - optional dependency
-    FastAPI = None
-    WebSocket = None
-    WebSocketDisconnect = Exception
-
-try:
     import uvicorn
-except ImportError:  # pragma: no cover - optional dependency
-    uvicorn = None
-
 
 def create_app(config: WebRuntimeConfig | None = None):
     if FastAPI is None:

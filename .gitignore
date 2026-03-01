@@ -4,3 +4,5 @@ snapshots/
 *.png
 .pytest_cache/
 node_modules/
+.ruff_cache
+.mypy_cache
