@@ -32,6 +32,8 @@ airpaint-web = "airpaint.web_server:main"
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
 

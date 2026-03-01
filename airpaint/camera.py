@@ -17,7 +17,10 @@ class CameraConfig:
 
 
 class Camera:
-    def __init__(self, config: CameraConfig = CameraConfig()):
+    def __init__(self, config: CameraConfig | None = None):
+        if config is None:
+            config = CameraConfig()
+
         self.config = config
         self.cap: cv2.VideoCapture | None = cv2.VideoCapture(config.device_index)
         self._read_failures = 0
