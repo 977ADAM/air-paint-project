@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
-Color = Tuple[int, int, int]
-Point = Tuple[float, float]
+Color = tuple[int, int, int]
+Point = tuple[float, float]
 
 
 def _clamp01(value: float) -> float:
@@ -19,7 +20,7 @@ class Stroke:
     id: int
     color: Color
     thickness: int
-    points: List[Point] = field(default_factory=list)
+    points: list[Point] = field(default_factory=list)
 
 
 class WebPainterState:
@@ -30,9 +31,9 @@ class WebPainterState:
         self.color: Color = (255, 0, 255)
         self.brush_thickness = 5
 
-        self._strokes: List[Stroke] = []
+        self._strokes: list[Stroke] = []
         self._next_stroke_id = 1
-        self._active_stroke_id: Optional[int] = None
+        self._active_stroke_id: int | None = None
         self._revision = 0
 
     @property
@@ -72,7 +73,7 @@ class WebPainterState:
         self._strokes.pop()
         self._touch()
 
-    def save_snapshot(self, *, merged: bool = True) -> Optional[Path]:
+    def save_snapshot(self, *, merged: bool = True) -> Path | None:
         del merged
         out_dir = Path(self.snapshots_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -93,7 +94,7 @@ class WebPainterState:
         self._active_stroke_id = None
         self._touch()
 
-    def update_from_landmarks(self, landmarks, fingers: Sequence[int]) -> Dict[str, Any]:
+    def update_from_landmarks(self, landmarks, fingers: Sequence[int]) -> dict[str, Any]:
         index_tip = landmarks.landmark[8]
         x = _clamp01(index_tip.x)
         y = _clamp01(index_tip.y)
@@ -112,7 +113,7 @@ class WebPainterState:
 
         return {"x": x, "y": y, "drawing": is_drawing}
 
-    def hud_state(self) -> Dict[str, Any]:
+    def hud_state(self) -> dict[str, Any]:
         return {
             "color": list(self.color),
             "brush_thickness": self.brush_thickness,
@@ -120,7 +121,7 @@ class WebPainterState:
             "revision": self._revision,
         }
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         return {
             "revision": self._revision,
             "active_stroke_id": self._active_stroke_id,

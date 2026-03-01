@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import cv2
 from dataclasses import dataclass
-from typing import Optional, Final
+from typing import Final
+
+import cv2
+
 
 @dataclass(frozen=True)
 class CameraConfig:
@@ -17,7 +19,7 @@ class CameraConfig:
 class Camera:
     def __init__(self, config: CameraConfig = CameraConfig()):
         self.config = config
-        self.cap: Optional[cv2.VideoCapture] = cv2.VideoCapture(config.device_index)
+        self.cap: cv2.VideoCapture | None = cv2.VideoCapture(config.device_index)
         self._read_failures = 0
         self._flip_code: Final[int] = 1  # horizontal
 
@@ -36,7 +38,7 @@ class Camera:
     def __exit__(self, exc_type, exc, tb):
         self.release()
 
-    def get_frame(self) -> Optional["cv2.Mat"]:
+    def get_frame(self) -> cv2.Mat | None:
         if not self.cap:
             return None
         ret, frame = self.cap.read()

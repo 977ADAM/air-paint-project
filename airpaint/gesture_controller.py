@@ -1,11 +1,12 @@
-from dataclasses import dataclass
-from collections import deque
 import json
 import logging
 import math
 import time
+from collections import deque
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Deque, Dict, List, Optional, Sequence, Tuple
+
 
 @dataclass
 class Gesture:
@@ -20,17 +21,17 @@ class GestureController:
         self.default_cooldown = 0.8  # seconds (monotonic)
         self.global_cooldown = 0.0  # global min cooldown (monotonic)
         self._last_global_trigger_time = 0.0
-        self._last_trigger_by_name: Dict[str, float] = {}
-        self.colors: List[Tuple[int, int, int]] = [
+        self._last_trigger_by_name: dict[str, float] = {}
+        self.colors: list[tuple[int, int, int]] = [
             (255, 0, 255),
             (0, 255, 0),
             (0, 0, 255),
             (255, 255, 0)
         ]
         self.color_index = 0
-        self._gestures_by_name: Dict[str, Gesture] = {}
-        self._gestures_by_pattern: Dict[Tuple[int, ...], Gesture] = {}
-        self._temporal_by_name: Dict[str, Gesture] = {}
+        self._gestures_by_name: dict[str, Gesture] = {}
+        self._gestures_by_pattern: dict[tuple[int, ...], Gesture] = {}
+        self._temporal_by_name: dict[str, Gesture] = {}
 
         # Temporal state machine
         self._pinch_active = False
@@ -38,8 +39,8 @@ class GestureController:
         self._pinch_hold_fired = False
         self._last_tap_time = 0.0
         self._tap_count = 0
-        self._index_history: Deque[Tuple[float, float, float]] = deque()
-        self._live_feedback: Optional[Tuple[str, Optional[float]]] = None
+        self._index_history: deque[tuple[float, float, float]] = deque()
+        self._live_feedback: tuple[str, float | None] | None = None
 
         # Default registry
         self.register("clear",  [1, 1, 0, 0, 0], self._clear, cooldown=1.2)
@@ -57,7 +58,7 @@ class GestureController:
         name: str,
         pattern: Sequence[int],
         handler: Callable[["Painter"], None],
-        cooldown: Optional[float] = None,
+        cooldown: float | None = None,
     ) -> None:
         p = tuple(int(x) for x in pattern)
         if len(p) != 5:
@@ -78,7 +79,7 @@ class GestureController:
         self,
         name: str,
         handler: Callable[["Painter"], None],
-        cooldown: Optional[float] = None,
+        cooldown: float | None = None,
     ) -> None:
         if name in self._gestures_by_name or name in self._temporal_by_name:
             raise ValueError(f"Gesture '{name}' already registered")
@@ -88,11 +89,11 @@ class GestureController:
     def set_global_cooldown(self, seconds: float) -> None:
         self.global_cooldown = max(0.0, float(seconds))
 
-    def apply_pattern_overrides(self, overrides: Dict[str, Sequence[int]]) -> None:
+    def apply_pattern_overrides(self, overrides: dict[str, Sequence[int]]) -> None:
         if not isinstance(overrides, dict):
             raise ValueError("Gesture overrides must be a dict: {name: [thumb,index,middle,ring,pinky]}")
 
-        next_patterns: Dict[str, Tuple[int, ...]] = {}
+        next_patterns: dict[str, tuple[int, ...]] = {}
         for name, pattern in overrides.items():
             if name not in self._gestures_by_name:
                 raise ValueError(f"Unknown gesture name in overrides: '{name}'")
@@ -103,12 +104,12 @@ class GestureController:
                 )
             next_patterns[name] = p
 
-        combined_patterns: Dict[str, Tuple[int, ...]] = {
+        combined_patterns: dict[str, tuple[int, ...]] = {
             name: gesture.pattern for name, gesture in self._gestures_by_name.items()
         }
         combined_patterns.update(next_patterns)
 
-        reverse: Dict[Tuple[int, ...], str] = {}
+        reverse: dict[tuple[int, ...], str] = {}
         for name, pattern in combined_patterns.items():
             other = reverse.get(pattern)
             if other is not None:
@@ -134,7 +135,7 @@ class GestureController:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.apply_pattern_overrides(data)
 
-    def handle(self, fingers: Sequence[int], painter: "Painter", landmarks=None) -> Optional[str]:
+    def handle(self, fingers: Sequence[int], painter: "Painter", landmarks=None) -> str | None:
         self._live_feedback = None
         temporal = self._detect_temporal_gesture(fingers, landmarks)
         if temporal and self._can_trigger(temporal):
@@ -155,7 +156,7 @@ class GestureController:
         self._live_feedback = (gesture.name, 1.0)
         return gesture.name
 
-    def get_live_feedback(self) -> Optional[Tuple[str, Optional[float]]]:
+    def get_live_feedback(self) -> tuple[str, float | None] | None:
         return self._live_feedback
 
     def _can_trigger(self, gesture: Gesture) -> bool:
@@ -174,7 +175,7 @@ class GestureController:
             extra={"event": "gesture_triggered", "gesture": gesture.name},
         )
 
-    def _detect_temporal_gesture(self, fingers: Sequence[int], landmarks) -> Optional[Gesture]:
+    def _detect_temporal_gesture(self, fingers: Sequence[int], landmarks) -> Gesture | None:
         if landmarks is None:
             return None
         now = self._clock()
@@ -184,7 +185,7 @@ class GestureController:
             return pinch
         return self._update_swipe(now, fingers, landmarks)
 
-    def _update_pinch(self, now: float, landmarks) -> Optional[Gesture]:
+    def _update_pinch(self, now: float, landmarks) -> Gesture | None:
         pinch_distance_threshold = 0.045
         hold_seconds = 0.3
         tap_max_duration = 0.18
@@ -227,7 +228,7 @@ class GestureController:
         self._pinch_hold_fired = False
         return None
 
-    def _update_swipe(self, now: float, fingers: Sequence[int], landmarks) -> Optional[Gesture]:
+    def _update_swipe(self, now: float, fingers: Sequence[int], landmarks) -> Gesture | None:
         swipe_window_s = 0.22
         swipe_min_dx = 0.20
         swipe_max_dy = 0.12
@@ -256,7 +257,7 @@ class GestureController:
             return self._temporal_by_name.get("swipe-left")
         return None
 
-    def _detect_gesture(self, fingers: Sequence[int]) -> Optional[Gesture]:
+    def _detect_gesture(self, fingers: Sequence[int]) -> Gesture | None:
         try:
             key = tuple(int(x) for x in fingers)
         except Exception:

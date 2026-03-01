@@ -5,7 +5,12 @@ import numpy as np
 import pytest
 
 from airpaint.web_painter import WebPainterState
-from airpaint.web_runtime import WebRuntimeConfig, WebSessionRuntime, decode_base64_frame, serialize_feedback
+from airpaint.web_runtime import (
+    WebRuntimeConfig,
+    WebSessionRuntime,
+    decode_base64_frame,
+    serialize_feedback,
+)
 
 
 class FakePoint:

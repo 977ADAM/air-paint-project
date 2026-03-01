@@ -1,7 +1,7 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Protocol
 
 import cv2
 
@@ -53,9 +53,9 @@ class PainterLike(Protocol):
 
 
 class GesturesLike(Protocol):
-    def handle(self, fingers, painter: PainterLike, landmarks=None) -> Optional[str]:
+    def handle(self, fingers, painter: PainterLike, landmarks=None) -> str | None:
         ...
-    def get_live_feedback(self) -> Optional[tuple[str, Optional[float]]]:
+    def get_live_feedback(self) -> tuple[str, float | None] | None:
         ...
 
 
@@ -112,7 +112,7 @@ class RuntimeService:
         self,
         config: AppConfig,
         deps: RuntimeDeps,
-        ui: Optional[UiLike] = None,
+        ui: UiLike | None = None,
         *,
         clock=time.monotonic,
         sleeper=time.sleep,
@@ -198,7 +198,7 @@ class RuntimeService:
         painter.draw_hud(merged)
         frame[:] = merged
 
-    def _draw_gesture_hint(self, frame, landmarks, feedback: Optional[tuple[str, Optional[float]]]) -> None:
+    def _draw_gesture_hint(self, frame, landmarks, feedback: tuple[str, float | None] | None) -> None:
         if not feedback:
             return
         h, w = frame.shape[:2]

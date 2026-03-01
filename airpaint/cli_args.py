@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -21,7 +20,7 @@ class AppConfig:
     min_tracking_confidence: float
     cooldown: float
     snapshots_dir: str
-    gesture_map: Optional[str]
+    gesture_map: str | None
     log_level: str
     debug: bool
 
@@ -143,8 +142,8 @@ class AppCli:
     @staticmethod
     def _float_range(
         *,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
+        min_value: float | None = None,
+        max_value: float | None = None,
         min_inclusive: bool = True,
         max_inclusive: bool = True,
     ):

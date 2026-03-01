@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import cv2
 import time
-import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+
+import cv2
+import numpy as np
+
 
 @dataclass
 class PainterConfig:
-    default_color: Tuple[int, int, int] = (255, 0, 255)
+    default_color: tuple[int, int, int] = (255, 0, 255)
     brush_thickness: int = 5
     smooth_factor: float = 0.4
     undo_depth: int = 20
@@ -17,21 +18,21 @@ class PainterConfig:
 
 
 class Painter:
-    def __init__(self, config: Optional[PainterConfig] = None):
+    def __init__(self, config: PainterConfig | None = None):
         self.config = config or PainterConfig()
-        self.canvas: Optional[np.ndarray] = None
-        self._mask: Optional[np.ndarray] = None
+        self.canvas: np.ndarray | None = None
+        self._mask: np.ndarray | None = None
         self._dirty: bool = True
         self.color = self.config.default_color
         self.brush_thickness = int(self.config.brush_thickness)
-        self.prev_x: Optional[int] = None
-        self.prev_y: Optional[int] = None
+        self.prev_x: int | None = None
+        self.prev_y: int | None = None
         self.smooth_factor = float(max(0.0, min(1.0, self.config.smooth_factor)))
-        self._undo_stack: List[np.ndarray] = []
+        self._undo_stack: list[np.ndarray] = []
         self._last_saved_frame_idx = 0
-        self._last_merged: Optional[np.ndarray] = None
-        self._stroke_points: List[Tuple[int, int]] = []
-        self.last_shape_snap: Optional[str] = None
+        self._last_merged: np.ndarray | None = None
+        self._stroke_points: list[tuple[int, int]] = []
+        self.last_shape_snap: str | None = None
 
     def init_canvas(self, frame):
         if self.canvas is None or self.canvas.shape != frame.shape:
@@ -73,7 +74,7 @@ class Painter:
         if len(self._undo_stack) > self.config.undo_depth:
             self._undo_stack.pop(0)
 
-    def save_snapshot(self, *, merged: bool = True) -> Optional[Path]:
+    def save_snapshot(self, *, merged: bool = True) -> Path | None:
         if self.canvas is None:
             return None
         out_dir = Path(self.config.snapshots_dir)
@@ -167,7 +168,7 @@ class Painter:
         self._dirty = True
         self.last_shape_snap = str(shape["kind"])
 
-    def _detect_shape(self, points: List[Tuple[int, int]]) -> Optional[Dict[str, object]]:
+    def _detect_shape(self, points: list[tuple[int, int]]) -> dict[str, object] | None:
         pts = np.array(points, dtype=np.float32)
         if pts.shape[0] < 8:
             return None
@@ -190,7 +191,7 @@ class Painter:
         closed = float(np.linalg.norm(end - start)) <= max(12.0, diag * 0.12)
 
         if closed:
-            candidates: List[Dict[str, object]] = []
+            candidates: list[dict[str, object]] = []
             circle = self._detect_circle(pts)
             if circle:
                 candidates.append(circle)
@@ -203,7 +204,7 @@ class Painter:
 
         return self._detect_arrow(pts)
 
-    def _detect_circle(self, pts: np.ndarray) -> Optional[Dict[str, object]]:
+    def _detect_circle(self, pts: np.ndarray) -> dict[str, object] | None:
         (cx, cy), r = cv2.minEnclosingCircle(pts)
         if r < 8:
             return None
@@ -219,7 +220,7 @@ class Painter:
             "score": radial_error,
         }
 
-    def _detect_rectangle(self, pts: np.ndarray) -> Optional[Dict[str, object]]:
+    def _detect_rectangle(self, pts: np.ndarray) -> dict[str, object] | None:
         contour = pts.reshape(-1, 1, 2)
         peri = float(cv2.arcLength(contour, True))
         if peri < 40:
@@ -243,7 +244,7 @@ class Painter:
             "score": 1.0 - fill_ratio,
         }
 
-    def _detect_arrow(self, pts: np.ndarray) -> Optional[Dict[str, object]]:
+    def _detect_arrow(self, pts: np.ndarray) -> dict[str, object] | None:
         if pts.shape[0] < 8:
             return None
         start = pts[0]
@@ -277,7 +278,7 @@ class Painter:
             "score": shaft_dev / max(1e-6, length),
         }
 
-    def _draw_ideal_shape(self, canvas: np.ndarray, shape: Dict[str, object]) -> None:
+    def _draw_ideal_shape(self, canvas: np.ndarray, shape: dict[str, object]) -> None:
         kind = str(shape["kind"])
         if kind == "circle":
             center = shape["center"]

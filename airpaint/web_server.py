@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Optional
 
 from .logging_utils import setup_logging
 from .web_runtime import WebRuntimeConfig, WebSessionRuntime
@@ -20,7 +19,7 @@ except ImportError:  # pragma: no cover - optional dependency
     uvicorn = None
 
 
-def create_app(config: Optional[WebRuntimeConfig] = None):
+def create_app(config: WebRuntimeConfig | None = None):
     if FastAPI is None:
         raise RuntimeError("FastAPI is not installed. Install with: pip install -e .[web]")
 

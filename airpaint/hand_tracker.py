@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import cv2
 import mediapipe as mp
-from dataclasses import dataclass
-from typing import Optional, Tuple
+
 
 @dataclass(frozen=True)
 class HandTrackerConfig:
@@ -15,7 +16,7 @@ class HandTrackerConfig:
 
 
 class HandTracker:
-    def __init__(self, config: Optional[HandTrackerConfig] = None):
+    def __init__(self, config: HandTrackerConfig | None = None):
         self.config = config or HandTrackerConfig()
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
@@ -27,7 +28,7 @@ class HandTracker:
         )
         self.mp_draw = mp.solutions.drawing_utils
 
-    def __enter__(self) -> "HandTracker":
+    def __enter__(self) -> HandTracker:
         return self
 
     def __exit__(self, exc_type, exc, tb):
@@ -40,7 +41,7 @@ class HandTracker:
             finally:
                 self.hands = None
 
-    def detect(self, frame) -> Optional[Tuple[object, object]]:
+    def detect(self, frame) -> tuple[object, object] | None:
         if self.hands is None:
             return None
         scale = min(1.0, max(0.2, float(self.config.input_scale)))
