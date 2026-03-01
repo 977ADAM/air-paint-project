@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import math
@@ -6,13 +8,17 @@ from collections import deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .painter import Painter
 
 
 @dataclass
 class Gesture:
     name: str
     pattern: Sequence[int]
-    handler: Callable[["Painter"], None]
+    handler: Callable[[Painter], None]
     cooldown: float = 0.8  # seconds (monotonic)
 
 class GestureController:
@@ -57,7 +63,7 @@ class GestureController:
         self,
         name: str,
         pattern: Sequence[int],
-        handler: Callable[["Painter"], None],
+        handler: Callable[[Painter], None],
         cooldown: float | None = None,
     ) -> None:
         p = tuple(int(x) for x in pattern)
@@ -78,7 +84,7 @@ class GestureController:
     def register_temporal(
         self,
         name: str,
-        handler: Callable[["Painter"], None],
+        handler: Callable[[Painter], None],
         cooldown: float | None = None,
     ) -> None:
         if name in self._gestures_by_name or name in self._temporal_by_name:
@@ -135,7 +141,7 @@ class GestureController:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.apply_pattern_overrides(data)
 
-    def handle(self, fingers: Sequence[int], painter: "Painter", landmarks=None) -> str | None:
+    def handle(self, fingers: Sequence[int], painter: Painter, landmarks=None) -> str | None:
         self._live_feedback = None
         temporal = self._detect_temporal_gesture(fingers, landmarks)
         if temporal and self._can_trigger(temporal):

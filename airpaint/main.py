@@ -208,10 +208,7 @@ class RuntimeService:
         y = max(0, min(h - 1, y))
 
         label, progress = feedback
-        if progress is None:
-            text = label
-        else:
-            text = f"{label} {int(progress * 100)}%"
+        text = label if progress is None else f"{label} {int(progress * 100)}%"
 
         pos_x = min(max(10, x + 12), max(10, w - 220))
         pos_y = min(max(30, y - 12), max(30, h - 10))
