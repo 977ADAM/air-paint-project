@@ -179,7 +179,7 @@ def decode_base64_frame(image_data: str) -> Optional[np.ndarray]:
     return frame
 
 
-def serialize_landmarks(landmarks) -> Optional[list[Dict[str, float]]]:
+def serialize_landmarks(landmarks) -> list[dict[str, float]] | None:
     if landmarks is None:
         return None
     return [
