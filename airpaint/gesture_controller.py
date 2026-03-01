@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .main import PainterLike
     from .painter import Painter
 
 
@@ -141,7 +142,7 @@ class GestureController:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.apply_pattern_overrides(data)
 
-    def handle(self, fingers: Sequence[int], painter: Painter, landmarks=None) -> str | None:
+    def handle(self, fingers: Sequence[int], painter: PainterLike, landmarks=None) -> str | None:
         self._live_feedback = None
         temporal = self._detect_temporal_gesture(fingers, landmarks)
         if temporal and self._can_trigger(temporal):

@@ -1,7 +1,7 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 import cv2
 
@@ -48,7 +48,7 @@ class PainterLike(Protocol):
     def undo(self) -> None:
         ...
 
-    def save_snapshot(self, merged: bool = True):
+    def save_snapshot(self, *, merged: bool = True) -> Any:
         ...
 
 
