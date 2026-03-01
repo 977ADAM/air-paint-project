@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import argparse
-from typing import TYPE_CHECKING
 import json
+
+import uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from .logging_utils import setup_logging
 from .web_runtime import WebRuntimeConfig, WebSessionRuntime
 
-if TYPE_CHECKING:
-    from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-    import uvicorn
 
 def create_app(config: WebRuntimeConfig | None = None):
     if FastAPI is None:
