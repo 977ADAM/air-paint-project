@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any
 
 import cv2
 import numpy as np
@@ -24,7 +24,7 @@ DEFAULT_COLORS = [
 class WebRuntimeConfig:
     snapshots_dir: str = "snapshots"
     cooldown: float = 0.0
-    gesture_map: Optional[str] = None
+    gesture_map: str | None = None
     max_hands: int = 1
     model_complexity: int = 0
     min_detection_confidence: float = 0.5
@@ -35,11 +35,11 @@ class WebRuntimeConfig:
 class WebSessionRuntime:
     def __init__(
         self,
-        config: Optional[WebRuntimeConfig] = None,
+        config: WebRuntimeConfig | None = None,
         *,
         tracker=None,
         gestures=None,
-        painter: Optional[WebPainterState] = None,
+        painter: WebPainterState | None = None,
     ) -> None:
         self.config = config or WebRuntimeConfig()
         self._owns_tracker = tracker is None
@@ -64,13 +64,13 @@ class WebSessionRuntime:
         if self._owns_tracker and hasattr(self.tracker, "close"):
             self.tracker.close()
 
-    def snapshot_state(self) -> Dict[str, Any]:
+    def snapshot_state(self) -> dict[str, Any]:
         return {
             "canvas": self.painter.snapshot(),
             "hud": self.painter.hud_state(),
         }
 
-    def handle_command(self, command: str, value: Optional[Any] = None) -> Dict[str, Any]:
+    def handle_command(self, command: str, value: Any = None) -> dict[str, Any]:
         saved_path = None
         if command == "clear":
             self.painter.clear()
@@ -99,13 +99,13 @@ class WebSessionRuntime:
             **self.snapshot_state(),
         }
 
-    def process_base64_frame(self, image_data: str) -> Dict[str, Any]:
+    def process_base64_frame(self, image_data: str) -> dict[str, Any]:
         frame = decode_base64_frame(image_data)
         if frame is None:
             raise ValueError("Invalid base64 image payload")
         return self.process_frame(frame)
 
-    def process_frame(self, frame: np.ndarray) -> Dict[str, Any]:
+    def process_frame(self, frame: np.ndarray) -> dict[str, Any]:
         detection = self.tracker.detect(frame)
 
         landmarks = None
@@ -155,7 +155,7 @@ class WebSessionRuntime:
             self.gestures.color_index = next_idx
 
 
-def decode_base64_frame(image_data: str) -> Optional[np.ndarray]:
+def decode_base64_frame(image_data: str) -> np.ndarray | None:
     if not image_data:
         return None
 
@@ -192,7 +192,7 @@ def serialize_landmarks(landmarks) -> list[dict[str, float]] | None:
     ]
 
 
-def serialize_handedness(handedness) -> Optional[Dict[str, Any]]:
+def serialize_handedness(handedness) -> dict[str, Any] | None:
     if handedness is None:
         return None
 
@@ -207,11 +207,11 @@ def serialize_handedness(handedness) -> Optional[Dict[str, Any]]:
     }
 
 
-def serialize_feedback(feedback: Optional[Tuple[str, Optional[float]]]) -> Optional[Dict[str, Any]]:
+def serialize_feedback(feedback: tuple[str, float | None] | None) -> dict[str, Any] | None:
     if not feedback:
         return None
     label, progress = feedback
-    payload: Dict[str, Any] = {"label": str(label)}
+    payload: dict[str, Any] = {"label": str(label)}
     if progress is not None:
         payload["progress"] = float(progress)
     return payload
