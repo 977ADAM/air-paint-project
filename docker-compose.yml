@@ -1,0 +1,21 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./snapshots:/app/snapshots
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app/web
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/web/node_modules
+    depends_on:
+      - backend
