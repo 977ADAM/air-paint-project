@@ -23,6 +23,7 @@ jobs:
         run: |
           pip install -U pip
           pip install -r requirements.txt
+          pip inttall -r requirements-web.txt
           pip install -r requirements-dev.txt
           pip install pytest-cov ruff mypy
 
