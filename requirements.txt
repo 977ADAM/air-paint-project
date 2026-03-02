@@ -1,2 +1,3 @@
 mediapipe==0.10.21
-opencv-python<4.13 
+opencv-python<4.13
+numpy>=1.26,<3
