@@ -3,9 +3,11 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal, TypedDict
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 
 
 @dataclass
@@ -15,6 +17,29 @@ class PainterConfig:
     smooth_factor: float = 0.4
     undo_depth: int = 20
     snapshots_dir: str = "snapshots"
+
+
+class CircleShape(TypedDict):
+    kind: Literal["circle"]
+    center: tuple[int, int]
+    radius: int
+    score: float
+
+
+class RectangleShape(TypedDict):
+    kind: Literal["rectangle"]
+    corners: npt.NDArray[np.int32]
+    score: float
+
+
+class ArrowShape(TypedDict):
+    kind: Literal["arrow"]
+    start: tuple[int, int]
+    end: tuple[int, int]
+    score: float
+
+
+Shape = CircleShape | RectangleShape | ArrowShape
 
 
 class Painter:
@@ -168,7 +193,7 @@ class Painter:
         self._dirty = True
         self.last_shape_snap = str(shape["kind"])
 
-    def _detect_shape(self, points: list[tuple[int, int]]) -> dict[str, object] | None:
+    def _detect_shape(self, points: list[tuple[int, int]]) -> Shape | None:
         pts = np.array(points, dtype=np.float32)
         if pts.shape[0] < 8:
             return None
@@ -191,7 +216,7 @@ class Painter:
         closed = float(np.linalg.norm(end - start)) <= max(12.0, diag * 0.12)
 
         if closed:
-            candidates: list[dict[str, object]] = []
+            candidates: list[Shape] = []
             circle = self._detect_circle(pts)
             if circle:
                 candidates.append(circle)
@@ -200,11 +225,11 @@ class Painter:
                 candidates.append(rect)
             if not candidates:
                 return None
-            return min(candidates, key=lambda c: float(c["score"]))
+            return min(candidates, key=lambda c: c["score"])
 
         return self._detect_arrow(pts)
 
-    def _detect_circle(self, pts: np.ndarray) -> dict[str, object] | None:
+    def _detect_circle(self, pts: np.ndarray) -> CircleShape | None:
         (cx, cy), r = cv2.minEnclosingCircle(pts)
         if r < 8:
             return None
@@ -220,7 +245,7 @@ class Painter:
             "score": radial_error,
         }
 
-    def _detect_rectangle(self, pts: np.ndarray) -> dict[str, object] | None:
+    def _detect_rectangle(self, pts: np.ndarray) -> RectangleShape | None:
         contour = pts.reshape(-1, 1, 2)
         peri = float(cv2.arcLength(contour, True))
         if peri < 40:
@@ -244,7 +269,7 @@ class Painter:
             "score": 1.0 - fill_ratio,
         }
 
-    def _detect_arrow(self, pts: np.ndarray) -> dict[str, object] | None:
+    def _detect_arrow(self, pts: np.ndarray) -> ArrowShape | None:
         if pts.shape[0] < 8:
             return None
         start = pts[0]
@@ -278,18 +303,17 @@ class Painter:
             "score": shaft_dev / max(1e-6, length),
         }
 
-    def _draw_ideal_shape(self, canvas: np.ndarray, shape: dict[str, object]) -> None:
-        kind = str(shape["kind"])
-        if kind == "circle":
+    def _draw_ideal_shape(self, canvas: np.ndarray, shape: Shape) -> None:
+        if shape["kind"] == "circle":
             center = shape["center"]
             radius = int(shape["radius"])
             cv2.circle(canvas, center, radius, self.color, self.brush_thickness)
             return
-        if kind == "rectangle":
+        if shape["kind"] == "rectangle":
             corners = np.array(shape["corners"], dtype=np.int32).reshape(-1, 1, 2)
             cv2.polylines(canvas, [corners], True, self.color, self.brush_thickness)
             return
-        if kind == "arrow":
+        if shape["kind"] == "arrow":
             start = shape["start"]
             end = shape["end"]
             cv2.arrowedLine(canvas, start, end, self.color, self.brush_thickness, tipLength=0.24)

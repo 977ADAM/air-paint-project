@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -53,7 +54,7 @@ class PainterLike(Protocol):
 
 
 class GesturesLike(Protocol):
-    def handle(self, fingers, painter: PainterLike, landmarks=None) -> str | None:
+    def handle(self, fingers: Sequence[int], painter: Any, landmarks=None) -> str | None:
         ...
     def get_live_feedback(self) -> tuple[str, float | None] | None:
         ...

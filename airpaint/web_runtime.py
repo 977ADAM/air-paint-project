@@ -12,7 +12,7 @@ from .gesture_controller import GestureController
 from .hand_tracker import HandTracker, HandTrackerConfig
 from .web_painter import WebPainterState
 
-DEFAULT_COLORS = [
+DEFAULT_COLORS: list[tuple[int, int, int]] = [
     (255, 0, 255),
     (0, 255, 0),
     (0, 0, 255),
@@ -139,11 +139,18 @@ class WebSessionRuntime:
         }
 
     def _cycle_color(self) -> None:
-        colors = [tuple(int(v) for v in c) for c in getattr(self.gestures, "colors", DEFAULT_COLORS)]
+        colors: list[tuple[int, int, int]] = []
+        for raw_color in getattr(self.gestures, "colors", DEFAULT_COLORS):
+            if isinstance(raw_color, (list, tuple)) and len(raw_color) >= 3:
+                colors.append((int(raw_color[0]), int(raw_color[1]), int(raw_color[2])))
         if not colors:
             colors = DEFAULT_COLORS
 
-        current = tuple(int(v) for v in self.painter.color)
+        current = (
+            int(self.painter.color[0]),
+            int(self.painter.color[1]),
+            int(self.painter.color[2]),
+        )
         try:
             idx = colors.index(current)
         except ValueError:

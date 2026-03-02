@@ -8,18 +8,28 @@ from collections import deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Protocol
 
-if TYPE_CHECKING:
-    from .main import PainterLike
-    from .painter import Painter
+
+class PainterLike(Protocol):
+    brush_thickness: int
+
+    def clear(self) -> None: ...
+
+    def set_color(self, color: Sequence[int]) -> None: ...
+
+    def undo(self) -> None: ...
+
+    def save_snapshot(self, *, merged: bool = True): ...
+
+    def set_brush_thickness(self, value: int) -> None: ...
 
 
 @dataclass
 class Gesture:
     name: str
-    pattern: Sequence[int]
-    handler: Callable[[Painter], None]
+    pattern: tuple[int, ...]
+    handler: Callable[[PainterLike], None]
     cooldown: float = 0.8  # seconds (monotonic)
 
 class GestureController:
@@ -64,7 +74,7 @@ class GestureController:
         self,
         name: str,
         pattern: Sequence[int],
-        handler: Callable[[Painter], None],
+        handler: Callable[[PainterLike], None],
         cooldown: float | None = None,
     ) -> None:
         p = tuple(int(x) for x in pattern)
@@ -85,7 +95,7 @@ class GestureController:
     def register_temporal(
         self,
         name: str,
-        handler: Callable[[Painter], None],
+        handler: Callable[[PainterLike], None],
         cooldown: float | None = None,
     ) -> None:
         if name in self._gestures_by_name or name in self._temporal_by_name:
@@ -271,21 +281,21 @@ class GestureController:
             return None
         return self._gestures_by_pattern.get(key)
 
-    def _clear(self, painter):
+    def _clear(self, painter: PainterLike) -> None:
         painter.clear()
 
-    def _next_color(self, painter):
+    def _next_color(self, painter: PainterLike) -> None:
         self.color_index = (self.color_index + 1) % len(self.colors)
         painter.set_color(self.colors[self.color_index])
 
-    def _undo(self, painter):
+    def _undo(self, painter: PainterLike) -> None:
         painter.undo()
 
-    def _save(self, painter):
+    def _save(self, painter: PainterLike) -> None:
         painter.save_snapshot()
 
-    def _brush_plus(self, painter):
+    def _brush_plus(self, painter: PainterLike) -> None:
         painter.set_brush_thickness(painter.brush_thickness + 1)
 
-    def _brush_minus(self, painter):
+    def _brush_minus(self, painter: PainterLike) -> None:
         painter.set_brush_thickness(painter.brush_thickness - 1)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import cv2
-import mediapipe as mp
+import mediapipe as mp  # type: ignore[import-untyped]
 
 
 @dataclass(frozen=True)

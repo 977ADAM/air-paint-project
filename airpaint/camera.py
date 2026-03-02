@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Final
 
 import cv2
+import numpy as np
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,7 @@ class Camera:
     def __exit__(self, exc_type, exc, tb):
         self.release()
 
-    def get_frame(self) -> cv2.Mat | None:
+    def get_frame(self) -> np.ndarray | None:
         if not self.cap:
             return None
         ret, frame = self.cap.read()
